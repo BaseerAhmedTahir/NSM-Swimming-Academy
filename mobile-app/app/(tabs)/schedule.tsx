@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/colors';
@@ -58,6 +58,24 @@ export default function ScheduleScreen() {
         }
 
         return studentClasses;
+    };
+
+    const handleCancelClass = (cls) => {
+        Alert.alert(
+            "Cancel Class",
+            `Are you sure you want to cancel your ${cls.time} class with ${cls.coach}?`,
+            [
+                { text: "No, Keep it", style: "cancel" },
+                { 
+                    text: "Yes, Cancel", 
+                    style: "destructive",
+                    onPress: () => {
+                        // In a real app, this would call an API
+                        Alert.alert("Success", "Your class has been cancelled.");
+                    }
+                }
+            ]
+        );
     };
 
     const currentClasses = getStudentClasses();
@@ -122,6 +140,16 @@ export default function ScheduleScreen() {
                                         <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
                                         <Text style={styles.classDetailText}>{cls.branch} Branch</Text>
                                     </View>
+                                    
+                                    {cls.status === 'Upcoming' && (
+                                        <TouchableOpacity 
+                                            style={styles.cancelBtn}
+                                            onPress={() => handleCancelClass(cls)}
+                                        >
+                                            <Ionicons name="close-circle-outline" size={16} color={colors.error || '#f44336'} />
+                                            <Text style={styles.cancelBtnText}>Cancel Class</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </View>
                         ))}
@@ -337,5 +365,22 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins_600SemiBold',
         fontSize: 15,
         color: colors.card,
+    },
+    cancelBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 15,
+        paddingVertical: 8,
+        borderRadius: 10,
+        backgroundColor: 'rgba(244, 67, 54, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(244, 67, 54, 0.1)',
+    },
+    cancelBtnText: {
+        fontFamily: 'Poppins_600SemiBold',
+        fontSize: 13,
+        color: colors.error || '#f44336',
+        marginLeft: 6,
     }
 });

@@ -11,8 +11,14 @@ export default function LoginScreen() {
 
     const handleAuth = () => {
         // Mock authentication: anywhere goes to branch selection
+        if (activeTab === 'register' && !acceptPrivacy) {
+            alert("Please accept the Privacy Policy to continue.");
+            return;
+        }
         router.replace('/branch-selection');
     };
+
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
     return (
         <KeyboardAvoidingView
@@ -91,6 +97,21 @@ export default function LoginScreen() {
                                 <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                                 <TextInput placeholder="Confirm Password" style={styles.input} secureTextEntry placeholderTextColor={colors.textSecondary} />
                             </View>
+                        )}
+
+                        {activeTab === 'register' && (
+                            <TouchableOpacity 
+                                style={styles.checkboxContainer} 
+                                onPress={() => setAcceptPrivacy(!acceptPrivacy)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
+                                    {acceptPrivacy && <Ionicons name="checkmark" size={14} color={colors.card} />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>
+                                    I agree to the <Text style={styles.privacyLink}>Privacy Policy</Text>
+                                </Text>
+                            </TouchableOpacity>
                         )}
 
                         {activeTab === 'login' && (
@@ -251,5 +272,32 @@ const styles = StyleSheet.create({
         color: colors.card,
         fontSize: 16,
         fontFamily: 'Nunito_800ExtraBold',
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 10,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: colors.primaryDark,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    checkboxChecked: {
+        backgroundColor: colors.primaryDark,
+    },
+    checkboxLabel: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 14,
+        color: colors.textPrimary,
+    },
+    privacyLink: {
+        color: colors.primaryDark,
+        fontFamily: 'Poppins_600SemiBold',
     },
 });

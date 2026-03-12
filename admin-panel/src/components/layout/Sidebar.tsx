@@ -13,6 +13,7 @@ import {
     Settings,
     Waves,
     UserMinus,
+    History as HistoryIcon,
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
@@ -23,6 +24,7 @@ const navItems = [
     { title: "Dashboard", href: "/dashboard", icon: Home },
     { title: "Schedule", href: "/schedule", icon: CalendarDays },
     { title: "Registration", href: "/students", icon: Users },
+    { title: "Expired Packages", href: "/students/expired", icon: HistoryIcon },
     { title: "Frozen Students", href: "/students/frozen", icon: Waves }, // Added
     { title: "Cancelled Students", href: "/students/cancelled", icon: UserMinus }, // Added
     { title: "Coaches", href: "/coaches", icon: UserSquare2 },
