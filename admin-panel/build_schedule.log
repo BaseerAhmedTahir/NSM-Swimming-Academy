@@ -1,0 +1,24 @@
+
+> admin-panel@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 12.4s
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/12) ...
+Error occurred prerendering page "/schedule". Read more: https://nextjs.org/docs/messages/prerender-error
+TypeError: Cannot read properties of null (reading 'match')
+    at <unknown> (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\server\chunks\ssr\src_app_(admin)_schedule_page_tsx_7a18ebad._.js:1:69110)
+    at Array.map (<anonymous>)
+    at <unknown> (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\server\chunks\ssr\src_app_(admin)_schedule_page_tsx_7a18ebad._.js:1:68410)
+    at Array.map (<anonymous>)
+    at <unknown> (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\server\chunks\ssr\src_app_(admin)_schedule_page_tsx_7a18ebad._.js:1:68236)
+    at Array.map (<anonymous>)
+    at cg (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\server\chunks\ssr\src_app_(admin)_schedule_page_tsx_7a18ebad._.js:1:67812) {
+  digest: '637720809'
+}
+Export encountered an error on /(admin)/schedule/page: /schedule, exiting the build.
+⨯ Next.js build worker exited with code: 1 and signal: null
