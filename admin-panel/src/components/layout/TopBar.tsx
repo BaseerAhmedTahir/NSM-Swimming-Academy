@@ -12,6 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
@@ -20,10 +21,19 @@ export function TopBar() {
     const router = useRouter();
     const [currentDate, setCurrentDate] = useState(new Date());
 
+    const [showReminder, setShowReminder] = useState(false);
+
     useEffect(() => {
         // Update every minute but avoid hydration mismatch by grabbing initial date in effect on load if we wanted strict ssr matching
         const timer = setInterval(() => setCurrentDate(new Date()), 60000);
-        return () => clearInterval(timer);
+        
+        // Simulate a reminder arriving after 5 seconds
+        const reminderTimer = setTimeout(() => setShowReminder(true), 5000);
+        
+        return () => {
+            clearInterval(timer);
+            clearTimeout(reminderTimer);
+        };
     }, []);
 
     const handleLogout = () => {
@@ -103,6 +113,29 @@ export function TopBar() {
                 </DropdownMenu>
 
             </div>
+
+            {/* Simulated Reminder Popup */}
+            <Dialog open={showReminder} onOpenChange={setShowReminder}>
+                <DialogContent className="sm:max-w-[400px] rounded-3xl border-primary/20 shadow-2xl bg-card">
+                    <DialogHeader className="items-center text-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 animate-bounce">
+                            <Bell className="w-8 h-8 text-primary" />
+                        </div>
+                        <DialogTitle className="text-xl font-black">🔔 New Reminder Received!</DialogTitle>
+                        <DialogDescription className="font-bold text-primary mt-1">
+                            From: Admin (Dubai Branch)
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 my-2">
+                        <p className="font-bold text-foreground text-center">"Please check the pool temperature readings for the 4 PM slot and ensure chemicals are balanced."</p>
+                    </div>
+                    <div className="flex justify-center mt-2 group">
+                        <Button onClick={() => setShowReminder(false)} className="rounded-xl font-bold bg-primary hover:bg-primary/90 px-8">
+                            Got it, thanks!
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

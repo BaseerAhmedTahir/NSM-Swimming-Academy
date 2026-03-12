@@ -29,6 +29,7 @@ const navItems = [
     { title: "Payments", href: "/payments", icon: CreditCard },
     { title: "Notifications", href: "/notifications", icon: BellRing },
     { title: "Reports", href: "/reports", icon: BarChart3 },
+    { title: "Reminders", href: "/reminders", icon: BellRing },
     { title: "Settings", href: "/settings", icon: Settings },
 ];
 

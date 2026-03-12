@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
     Users, Plus, Search, Filter, MoreHorizontal,
-    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer
+    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
