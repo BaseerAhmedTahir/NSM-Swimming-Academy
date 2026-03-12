@@ -3,6 +3,61 @@ export type Student = any;
 export type Coach = any;
 export type Schedule = any;
 
+export const frozenStudents = [
+  {
+    id: "NSM-DXB-F01",
+    name: "Ziad Ahmed",
+    branch: "Dubai",
+    membership: "Silver",
+    freezeDate: "2026-03-01",
+    expectedResumeDate: "2026-04-01",
+    comment: "Medical leave due to injury",
+    phone: "+971501234567"
+  },
+  {
+    id: "NSM-SHJ-F02",
+    name: "Layla Hassan",
+    branch: "Sharjah",
+    membership: "Gold",
+    freezeDate: "2026-02-15",
+    expectedResumeDate: "2026-03-15",
+    comment: "Traveling for a month",
+    phone: "+971509876543"
+  }
+];
+
+export const cancelledStudents = [
+  {
+    id: "NSM-DXB-C01",
+    name: "Omar Ali",
+    branch: "Dubai",
+    membership: "Basic",
+    cancelDate: "2026-02-28",
+    reason: "Relocating to another city",
+    phone: "+971505554444"
+  },
+  {
+    id: "NSM-AUH-C02",
+    name: "Sara John",
+    branch: "Abu Dhabi",
+    membership: "Platinum",
+    cancelDate: "2026-03-05",
+    reason: "Schedule conflict",
+    phone: "+971502223333"
+  }
+];
+
+export const expiredPackages = [
+  {
+    studentId: "NSM-DXB-001",
+    packageName: "Silver Package",
+    classesUsed: 2,
+    totalClasses: 10,
+    expiryDate: "2025-04-15",
+    status: "Expired"
+  }
+];
+
 export const students = [
   {
     "id": "NSM-DXB-001",

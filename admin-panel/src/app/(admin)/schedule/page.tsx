@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Waves, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // Mock Data Source
-import { scheduleData, students } from "@/lib/mockData";
+// Mock Data Source
+import { scheduleData, students, expiredPackages } from "@/lib/mockData";
 
 export default function SchedulePage() {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date("2026-02-23")); // Set to a date with known mock data
@@ -27,6 +28,8 @@ export default function SchedulePage() {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
+    const [freezeComment, setFreezeComment] = useState("");
     const [studentStatusMap, setStudentStatusMap] = useState<Record<string, string>>({}); // id -> status
 
     // Get data for selected date and branch
@@ -241,6 +244,9 @@ export default function SchedulePage() {
                                                                     <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenStudentDetails(studentStr)}>
                                                                         <UserMinus className="mr-2 h-4 w-4" /> View Profile
                                                                     </Button>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setIsFreezeModalOpen(true)}>
+                                                                        <Waves className="mr-2 h-4 w-4" /> Freeze Student
+                                                                    </Button>
                                                                     <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenNotify(studentStr)}>
                                                                         <MessageSquare className="mr-2 h-4 w-4" /> Send Message
                                                                     </Button>
@@ -347,6 +353,32 @@ export default function SchedulePage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Package History Section */}
+                                <div className="mt-4 border-t border-border/50 pt-4">
+                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Activity className="w-3 h-3 text-primary" />
+                                        Package History
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {expiredPackages.filter(p => p.studentId === selectedStudent.id).length > 0 ? (
+                                            expiredPackages.filter(p => p.studentId === selectedStudent.id).map((pkg, idx) => (
+                                                <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-bold text-[#0B213F] text-sm">{pkg.packageName}</p>
+                                                        <p className="text-[10px] font-bold text-slate-500">Expired on {pkg.expiryDate}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
+                                                        <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Expired</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground italic text-center py-2">No history of expired packages found.</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </>
                     )}
@@ -421,6 +453,50 @@ export default function SchedulePage() {
                         <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
                         <Button onClick={() => { toast.success("Student added to slot"); setIsAddModalOpen(false); }} className="font-bold">
                             Add to Schedule
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Freeze Student Modal */}
+            <Dialog open={isFreezeModalOpen} onOpenChange={setIsFreezeModalOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Waves className="w-5 h-5 text-blue-600" />
+                            Freeze Membership
+                        </DialogTitle>
+                        <DialogDescription>
+                            Freeze {selectedStudent?.displayName}'s membership temporarily.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="resume-date">Expected Resume Date</Label>
+                            <Input id="resume-date" type="date" className="rounded-xl" defaultValue="2026-04-12" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="comment">Reason / Comment</Label>
+                            <Textarea
+                                id="comment"
+                                placeholder="e.g., Medical leave, traveling..."
+                                className="h-24 resize-none rounded-xl"
+                                value={freezeComment}
+                                onChange={(e) => setFreezeComment(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsFreezeModalOpen(false)}>Cancel</Button>
+                        <Button 
+                            onClick={() => { 
+                                toast.success("Membership frozen successfully. Student added to monthly freeze list."); 
+                                setIsFreezeModalOpen(false); 
+                                setFreezeComment("");
+                            }} 
+                            className="font-bold bg-blue-600 hover:bg-blue-700"
+                        >
+                            Confirm Freeze
                         </Button>
                     </DialogFooter>
                 </DialogContent>

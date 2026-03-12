@@ -12,6 +12,7 @@ import {
     BarChart3,
     Settings,
     Waves,
+    UserMinus,
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
@@ -22,6 +23,8 @@ const navItems = [
     { title: "Dashboard", href: "/dashboard", icon: Home },
     { title: "Schedule", href: "/schedule", icon: CalendarDays },
     { title: "Registration", href: "/students", icon: Users },
+    { title: "Frozen Students", href: "/students/frozen", icon: Waves }, // Added
+    { title: "Cancelled Students", href: "/students/cancelled", icon: UserMinus }, // Added
     { title: "Coaches", href: "/coaches", icon: UserSquare2 },
     { title: "Payments", href: "/payments", icon: CreditCard },
     { title: "Notifications", href: "/notifications", icon: BellRing },

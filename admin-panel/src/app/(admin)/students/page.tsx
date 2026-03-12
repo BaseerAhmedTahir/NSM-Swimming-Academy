@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // Mock Data Source
-import { students as initialStudents } from "@/lib/mockData";
+import { students as initialStudents, expiredPackages } from "@/lib/mockData";
 
 export default function StudentsPage() {
     const [students, setStudents] = useState(initialStudents);
@@ -572,7 +572,7 @@ export default function StudentsPage() {
                                 </div>
                                 <DialogTitle className="text-2xl font-black text-[#0B213F]">{selectedStudent.name}</DialogTitle>
                                 <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {selectedStudent.branch}</DialogDescription>
-                                <Button variant="outline" size="sm" className="absolute top-4 right-4 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
+                                <Button variant="outline" size="sm" className="absolute top-14 right-4 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
                             </div>
                             <div className="p-6 grid gap-4 bg-[#f8fafc]">
                                 <div className="grid grid-cols-2 gap-4">
@@ -619,6 +619,32 @@ export default function StudentsPage() {
                                                 style={{ width: `${(selectedStudent.attendance?.attended / selectedStudent.attendance?.totalClasses) * 100}%` }}
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Package History Section */}
+                                <div className="mt-4 border-t border-border/50 pt-4">
+                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Activity className="w-3 h-3 text-primary" />
+                                        Package History
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {expiredPackages.filter(p => p.studentId === selectedStudent.id).length > 0 ? (
+                                            expiredPackages.filter(p => p.studentId === selectedStudent.id).map((pkg, idx) => (
+                                                <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-bold text-[#0B213F] text-sm">{pkg.packageName}</p>
+                                                        <p className="text-[10px] font-bold text-slate-500">Expired on {pkg.expiryDate}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
+                                                        <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Expired</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground italic text-center py-2">No history of expired packages found.</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
