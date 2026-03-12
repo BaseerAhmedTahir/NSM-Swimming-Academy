@@ -566,45 +566,59 @@ export default function StudentsPage() {
                     <DialogTitle className="sr-only">Student Details</DialogTitle>
                     {selectedStudent && (
                         <>
-                            <div className="bg-primary/10 p-6 flex items-start justify-between border-b border-border/50">
-                                <div className="flex gap-4 items-center">
-                                    <div className="w-16 h-16 rounded-full bg-card border-2 border-primary flex items-center justify-center shadow-md">
-                                        <span className="text-xl font-black text-primaryDark">{selectedStudent.name?.substring(0, 2).toUpperCase()}</span>
-                                    </div>
-                                    <div>
-                                        <DialogTitle className="text-2xl font-black">{selectedStudent.name}</DialogTitle>
-                                        <DialogDescription className="font-semibold text-primary">{selectedStudent.id} • {selectedStudent.level}</DialogDescription>
-                                    </div>
+                            <div className="bg-primary/10 p-6 flex flex-col items-center text-center border-b border-border/50 relative">
+                                <div className="w-20 h-20 rounded-full bg-card border-2 border-primary flex items-center justify-center shadow-lg mb-3">
+                                    <span className="text-2xl font-black text-primaryDark">{selectedStudent.name?.substring(0, 2).toUpperCase()}</span>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
+                                <DialogTitle className="text-2xl font-black text-[#0B213F]">{selectedStudent.name}</DialogTitle>
+                                <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {selectedStudent.branch}</DialogDescription>
+                                <Button variant="outline" size="sm" className="absolute top-4 right-4 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
                             </div>
-                            <div className="p-6 grid gap-6">
+                            <div className="p-6 grid gap-4 bg-[#f8fafc]">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/50">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Membership</p>
-                                        <p className="font-bold text-foreground">{selectedStudent.membership}</p>
-                                        <p className="text-xs text-muted-foreground mt-1 font-semibold">Start: {selectedStudent.attendance?.startDate || "2026-02-24"} | Expiry: {selectedStudent.attendance?.expiryDate || "2026-05-24"}</p>
+                                    {/* Membership Info */}
+                                    <div className="space-y-1 bg-white p-4 rounded-2xl border border-border/40 shadow-sm">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Membership</p>
+                                        <p className="font-bold text-[#0B213F]">{selectedStudent.membership}</p>
+                                        <p className="text-[10px] font-bold text-[#1C5CAA] mt-1">
+                                            {selectedStudent.attendance?.startDate} to {selectedStudent.attendance?.expiryDate}
+                                        </p>
                                     </div>
-                                    <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/50">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fee Status</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className={cn("px-2 py-0.5 rounded text-xs font-bold", selectedStudent.fee?.status === 'Paid' ? "bg-success/20 text-success" : "bg-warning/20 text-warning")}>
+
+                                    {/* Fee Status */}
+                                    <div className="space-y-1 bg-white p-4 rounded-2xl border border-border/40 shadow-sm">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Status</p>
+                                        <div className="flex items-center justify-between gap-2 mt-1">
+                                            <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider", selectedStudent.fee?.status === 'Paid' ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>
                                                 {selectedStudent.fee?.status}
                                             </span>
-                                            <span className="font-bold">AED {selectedStudent.fee?.amount}</span>
+                                            <span className="font-black text-[#0B213F] text-sm">AED {selectedStudent.fee?.amount}</span>
                                         </div>
                                     </div>
-                                    <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/50">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Contact</p>
-                                        <p className="text-sm font-semibold text-foreground">{selectedStudent.phone}</p>
-                                        {/* @ts-ignore */}
-                                        <p className="text-sm font-medium text-muted-foreground">{selectedStudent.email || "student@example.com"}</p>
+
+                                    {/* Contact Info */}
+                                    <div className="space-y-2 bg-white p-4 rounded-2xl border border-border/40 shadow-sm col-span-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Information</p>
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm font-bold text-[#0B213F]">{selectedStudent.phone}</p>
+                                            <p className="text-xs font-medium text-slate-500 truncate">{selectedStudent.email || "student@example.com"}</p>
+                                        </div>
                                     </div>
-                                    <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/50">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Attendance</p>
-                                        <p className="text-sm font-bold text-foreground">
-                                            <span className="text-success">{selectedStudent.attendance?.attended} Done</span> / {selectedStudent.attendance?.totalClasses} Total
+
+                                    {/* Attendance Progress */}
+                                    <div className="space-y-1 bg-white p-4 rounded-2xl border border-border/40 shadow-sm col-span-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attendance</p>
+                                        <p className="text-sm font-black text-[#0B213F] mt-1">
+                                            <span className="text-success">{selectedStudent.attendance?.attended} Done</span>
+                                            <span className="text-slate-400 mx-1">/</span>
+                                            <span>{selectedStudent.attendance?.totalClasses} Total</span>
                                         </p>
+                                        <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                                            <div
+                                                className="h-full bg-success transition-all duration-500"
+                                                style={{ width: `${(selectedStudent.attendance?.attended / selectedStudent.attendance?.totalClasses) * 100}%` }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
