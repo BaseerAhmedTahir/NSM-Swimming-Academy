@@ -1,0 +1,332 @@
+
+> admin-panel@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+Error: Can't resolve 'tailwindcss-animate' in 'C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\src\app'
+    [2m[at finishWithoutResolve (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:586:18)][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:678:14][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m {
+  details: "resolve 'tailwindcss-animate' in 'C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\src\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\package.json (relative path: ./src/app)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\src\\app\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\src\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\package.json (relative path: ./node_modules/tailwindcss-animate)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    '            .js\n' +
+    "              C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate.js doesn't exist\n" +
+    '            .json\n' +
+    "              C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate.json doesn't exist\n" +
+    '            .node\n' +
+    "              C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate.node doesn't exist\n" +
+    '            .ts\n' +
+    "              C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate.ts doesn't exist\n" +
+    "        C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\admin-panel\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    "      C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\nsm-swimming-academy\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Mustafavi\\Desktop\\Mehboob client\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Mustafavi\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Mustafavi\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+
+> Build error occurred
+Error: Turbopack build failed with 11 errors:
+./src/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\src\app\globals.css:1:1: Can't resolve 'tailwindcss-animate' in 'C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\src\app'
+    at Input.error (node_modules/postcss/lib/input.js:135:16) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\node_modules_fe693df6._.js:4651:22]
+    at Root.error (node_modules/postcss/lib/node.js:146:32) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\node_modules_fe693df6._.js:928:38]
+    [at Object.Once (C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\node_modules\@tailwindcss\postcss\dist\index.js:10:6913)]
+    at async LazyResult.runAsync (node_modules/postcss/lib/lazy-result.js:293:11) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\node_modules_fe693df6._.js:6206:21]
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\[root-of-the-server]__51225daf._.js:146:36]
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\[root-of-the-server]__974941ed._.js:443:31]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+./src/app/(admin)/coaches/page.tsx:34:1
+Module not found: Can't resolve '../../scripts/generate_mock_data'
+[0m [90m 32 |[39m
+ [90m 33 |[39m [90m// Mock Data[39m
+[31m[1m>[22m[39m[90m 34 |[39m [36mimport[39m { coaches [36mas[39m initialCoaches } [36mfrom[39m [32m"../../scripts/generate_mock_data"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 35 |[39m
+ [90m 36 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mCoachesPage[39m() {
+ [90m 37 |[39m     [36mconst[39m [coaches[33m,[39m setCoaches] [33m=[39m useState(initialCoaches)[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/coaches/page.tsx [Client Component Browser]
+    ./src/app/(admin)/coaches/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/coaches/page.tsx [Client Component SSR]
+    ./src/app/(admin)/coaches/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/payments/page.tsx:35:1
+Module not found: Can't resolve '../../scripts/generate_mock_data'
+[0m [90m 33 |[39m
+ [90m 34 |[39m [90m// Mock Data[39m
+[31m[1m>[22m[39m[90m 35 |[39m [36mimport[39m { paymentRecords [36mas[39m initialPayments } [36mfrom[39m [32m"../../scripts/generate_mock_data"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 36 |[39m
+ [90m 37 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mPaymentsPage[39m() {
+ [90m 38 |[39m     [36mconst[39m [payments[33m,[39m setPayments] [33m=[39m useState(initialPayments)[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/payments/page.tsx [Client Component Browser]
+    ./src/app/(admin)/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/payments/page.tsx [Client Component SSR]
+    ./src/app/(admin)/payments/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/schedule/page.tsx:18:1
+Module not found: Can't resolve '../../scripts/generate_mock_data'
+[0m [90m 16 |[39m
+ [90m 17 |[39m [90m// Mock Data Source[39m
+[31m[1m>[22m[39m[90m 18 |[39m [36mimport[39m { scheduleData[33m,[39m students } [36mfrom[39m [32m"../../scripts/generate_mock_data"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 19 |[39m
+ [90m 20 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mSchedulePage[39m() {
+ [90m 21 |[39m     [36mconst[39m [selectedDate[33m,[39m setSelectedDate] [33m=[39m useState[33m<[39m[33mDate[39m[33m>[39m([36mnew[39m [33mDate[39m([32m"2026-02-23"[39m))[33m;[39m [90m// Set to a date with known mock data[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/schedule/page.tsx [Client Component Browser]
+    ./src/app/(admin)/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/schedule/page.tsx [Client Component SSR]
+    ./src/app/(admin)/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/students/page.tsx:34:1
+Module not found: Can't resolve '../../scripts/generate_mock_data'
+[0m [90m 32 |[39m
+ [90m 33 |[39m [90m// Mock Data Source[39m
+[31m[1m>[22m[39m[90m 34 |[39m [36mimport[39m { students [36mas[39m initialStudents } [36mfrom[39m [32m"../../scripts/generate_mock_data"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 35 |[39m
+ [90m 36 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mStudentsPage[39m() {
+ [90m 37 |[39m     [36mconst[39m [students[33m,[39m setStudents] [33m=[39m useState(initialStudents)[33m;[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/students/page.tsx [Client Component Browser]
+    ./src/app/(admin)/students/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/students/page.tsx [Client Component SSR]
+    ./src/app/(admin)/students/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/notifications/page.tsx:23:1
+Module not found: Can't resolve '@/components/ui/radio-group'
+[0m [90m 21 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardDescription[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m } [36mfrom[39m [32m"@/components/ui/card"[39m[33m;[39m
+ [90m 22 |[39m [36mimport[39m { [33mTabs[39m[33m,[39m [33mTabsContent[39m[33m,[39m [33mTabsList[39m[33m,[39m [33mTabsTrigger[39m } [36mfrom[39m [32m"@/components/ui/tabs"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 23 |[39m [36mimport[39m { [33mRadioGroup[39m[33m,[39m [33mRadioGroupItem[39m } [36mfrom[39m [32m"@/components/ui/radio-group"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 24 |[39m [36mimport[39m { toast } [36mfrom[39m [32m"sonner"[39m[33m;[39m
+ [90m 25 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[33m;[39m
+ [90m 26 |[39m[0m
+
+Import map: aliased to relative './src/components/ui/radio-group' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/notifications/page.tsx [Client Component Browser]
+    ./src/app/(admin)/notifications/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/notifications/page.tsx [Client Component SSR]
+    ./src/app/(admin)/notifications/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/payments/page.tsx:29:1
+Module not found: Can't resolve '@/components/ui/switch'
+[0m [90m 27 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mDialogContent[39m[33m,[39m [33mDialogDescription[39m[33m,[39m [33mDialogFooter[39m[33m,[39m [33mDialogHeader[39m[33m,[39m [33mDialogTitle[39m } [36mfrom[39m [32m"@/components/ui/dialog"[39m[33m;[39m
+ [90m 28 |[39m [36mimport[39m { [33mSelect[39m[33m,[39m [33mSelectContent[39m[33m,[39m [33mSelectItem[39m[33m,[39m [33mSelectTrigger[39m[33m,[39m [33mSelectValue[39m } [36mfrom[39m [32m"@/components/ui/select"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 29 |[39m [36mimport[39m { [33mSwitch[39m } [36mfrom[39m [32m"@/components/ui/switch"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 30 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m } [36mfrom[39m [32m"@/components/ui/card"[39m[33m;[39m
+ [90m 31 |[39m [36mimport[39m { toast } [36mfrom[39m [32m"sonner"[39m[33m;[39m
+ [90m 32 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[33m;[39m[0m
+
+Import map: aliased to relative './src/components/ui/switch' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/payments/page.tsx [Client Component Browser]
+    ./src/app/(admin)/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/payments/page.tsx [Client Component SSR]
+    ./src/app/(admin)/payments/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/settings/page.tsx:20:1
+Module not found: Can't resolve '@/components/ui/switch'
+[0m [90m 18 |[39m     [33mTableRow[39m[33m,[39m
+ [90m 19 |[39m } [36mfrom[39m [32m"@/components/ui/table"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 20 |[39m [36mimport[39m { [33mSwitch[39m } [36mfrom[39m [32m"@/components/ui/switch"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 21 |[39m [36mimport[39m { toast } [36mfrom[39m [32m"sonner"[39m[33m;[39m
+ [90m 22 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[33m;[39m
+ [90m 23 |[39m[0m
+
+Import map: aliased to relative './src/components/ui/switch' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/settings/page.tsx [Client Component Browser]
+    ./src/app/(admin)/settings/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/settings/page.tsx [Client Component SSR]
+    ./src/app/(admin)/settings/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/students/page.tsx:29:1
+Module not found: Can't resolve '@/components/ui/switch'
+[0m [90m 27 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mDialogContent[39m[33m,[39m [33mDialogDescription[39m[33m,[39m [33mDialogFooter[39m[33m,[39m [33mDialogHeader[39m[33m,[39m [33mDialogTitle[39m } [36mfrom[39m [32m"@/components/ui/dialog"[39m[33m;[39m
+ [90m 28 |[39m [36mimport[39m { [33mSelect[39m[33m,[39m [33mSelectContent[39m[33m,[39m [33mSelectItem[39m[33m,[39m [33mSelectTrigger[39m[33m,[39m [33mSelectValue[39m } [36mfrom[39m [32m"@/components/ui/select"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 29 |[39m [36mimport[39m { [33mSwitch[39m } [36mfrom[39m [32m"@/components/ui/switch"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 30 |[39m [36mimport[39m { toast } [36mfrom[39m [32m"sonner"[39m[33m;[39m
+ [90m 31 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[33m;[39m
+ [90m 32 |[39m[0m
+
+Import map: aliased to relative './src/components/ui/switch' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/students/page.tsx [Client Component Browser]
+    ./src/app/(admin)/students/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/students/page.tsx [Client Component SSR]
+    ./src/app/(admin)/students/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/notifications/page.tsx:11:1
+Module not found: Can't resolve '@/components/ui/textarea'
+[0m [90m  9 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m"@/components/ui/input"[39m[33m;[39m
+ [90m 10 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m"@/components/ui/label"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m"@/components/ui/textarea"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 12 |[39m [36mimport[39m {
+ [90m 13 |[39m     [33mTable[39m[33m,[39m
+ [90m 14 |[39m     [33mTableBody[39m[33m,[39m[0m
+
+Import map: aliased to relative './src/components/ui/textarea' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/notifications/page.tsx [Client Component Browser]
+    ./src/app/(admin)/notifications/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/notifications/page.tsx [Client Component SSR]
+    ./src/app/(admin)/notifications/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/(admin)/schedule/page.tsx:13:1
+Module not found: Can't resolve '@/components/ui/textarea'
+[0m [90m 11 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m"@/components/ui/label"[39m[33m;[39m
+ [90m 12 |[39m [36mimport[39m { [33mSelect[39m[33m,[39m [33mSelectContent[39m[33m,[39m [33mSelectItem[39m[33m,[39m [33mSelectTrigger[39m[33m,[39m [33mSelectValue[39m } [36mfrom[39m [32m"@/components/ui/select"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 13 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m"@/components/ui/textarea"[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 14 |[39m [36mimport[39m { toast } [36mfrom[39m [32m"sonner"[39m[33m;[39m
+ [90m 15 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[33m;[39m
+ [90m 16 |[39m[0m
+
+Import map: aliased to relative './src/components/ui/textarea' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/(admin)/schedule/page.tsx [Client Component Browser]
+    ./src/app/(admin)/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/(admin)/schedule/page.tsx [Client Component SSR]
+    ./src/app/(admin)/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\[root-of-the-server]__51225daf._.js:146:36])
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Mustafavi\Desktop\Mehboob client\nsm-swimming-academy\admin-panel\.next\build\chunks\[root-of-the-server]__974941ed._.js:443:31])
+    at <unknown> (./src/app/(admin)/coaches/page.tsx:34:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/payments/page.tsx:35:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/schedule/page.tsx:18:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/students/page.tsx:34:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/notifications/page.tsx:23:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/payments/page.tsx:29:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/settings/page.tsx:20:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/students/page.tsx:29:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/notifications/page.tsx:11:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/(admin)/schedule/page.tsx:13:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
