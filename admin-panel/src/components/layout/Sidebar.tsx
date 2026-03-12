@@ -13,7 +13,9 @@ import {
     Settings,
     Waves,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Snowflake,
+    UserX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -25,6 +27,8 @@ const navItems = [
     { title: "Coaches", href: "/coaches", icon: UserSquare2 },
     { title: "Payments", href: "/payments", icon: CreditCard },
     { title: "Notifications", href: "/notifications", icon: BellRing },
+    { title: "Freezing", href: "/freezing", icon: Snowflake },
+    { title: "Cancellations", href: "/cancellations", icon: UserX },
     { title: "Reports", href: "/reports", icon: BarChart3 },
     { title: "Settings", href: "/settings", icon: Settings },
 ];

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import {
     Users, Plus, Search, Filter, MoreHorizontal,
-    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer
+    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer,
+    Snowflake, Ban
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,13 +142,14 @@ export default function StudentsPage() {
                     </Select>
                     <Select defaultValue="all-status">
                         <SelectTrigger className="w-full md:w-[150px] border-border/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-medium hover:bg-white text-left">
-                            <SelectValue placeholder="Fee Status" />
+                            <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all-status">All Status</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="overdue">Overdue</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                            <SelectItem value="frozen">Frozen</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                     </Select>
                     <Button variant="outline" size="icon" className="shrink-0 border-border/50">
@@ -165,6 +168,7 @@ export default function StudentsPage() {
                             <TableHead className="font-bold text-foreground">Level</TableHead>
                             <TableHead className="font-bold text-foreground">Branch</TableHead>
                             <TableHead className="font-bold text-foreground">Membership</TableHead>
+                            <TableHead className="font-bold text-foreground">Status</TableHead>
                             <TableHead className="font-bold text-foreground">Fee Status</TableHead>
                             <TableHead className="text-right font-bold text-foreground">Actions</TableHead>
                         </TableRow>
@@ -189,6 +193,17 @@ export default function StudentsPage() {
                                     <TableCell>
                                         <p className="font-bold text-sm text-foreground">{student.membership}</p>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">{student.attendance.totalClasses} Classes</p>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className={cn(
+                                            "font-black rounded-lg text-[10px] uppercase tracking-wider px-2 py-0.5",
+                                            student.status === 'Active' ? "bg-success/10 text-success border-success/20" : 
+                                            student.status === 'Expired' ? "bg-error/10 text-error border-error/20" :
+                                            student.status === 'Frozen' ? "bg-blue-100 text-blue-600 border-blue-200" :
+                                            "bg-slate-100 text-slate-500 border-slate-200"
+                                        )}>
+                                            {student.status || 'Active'}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -572,7 +587,7 @@ export default function StudentsPage() {
                                 </div>
                                 <DialogTitle className="text-2xl font-black text-[#0B213F]">{selectedStudent.name}</DialogTitle>
                                 <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {selectedStudent.branch}</DialogDescription>
-                                <Button variant="outline" size="sm" className="absolute top-4 right-4 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
+                                <Button variant="outline" size="sm" className="absolute top-4 right-12 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
                             </div>
                             <div className="p-6 grid gap-4 bg-[#f8fafc]">
                                 <div className="grid grid-cols-2 gap-4">

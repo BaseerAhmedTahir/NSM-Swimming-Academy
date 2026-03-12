@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,6 +26,7 @@ export default function SchedulePage() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+    const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [studentStatusMap, setStudentStatusMap] = useState<Record<string, string>>({}); // id -> status
 
@@ -244,9 +245,12 @@ export default function SchedulePage() {
                                                                     <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenNotify(studentStr)}>
                                                                         <MessageSquare className="mr-2 h-4 w-4" /> Send Message
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-error hover:text-error hover:bg-error/10 mt-1">
-                                                                        <X className="mr-2 h-4 w-4" /> Remove Slot
-                                                                    </Button>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => setIsFreezeModalOpen(true)}>
+                                          <Snowflake className="mr-2 h-4 w-4 text-blue-500" /> Freeze Membership
+                                      </Button>
+                                      <Button variant="ghost" className="justify-start h-8 font-semibold text-error hover:text-error hover:bg-error/10 mt-1">
+                                          <X className="mr-2 h-4 w-4" /> Remove Slot
+                                      </Button>
                                                                 </PopoverContent>
                                                             </Popover>
                                                         );
@@ -299,6 +303,7 @@ export default function SchedulePage() {
                                 </div>
                                 <DialogTitle className="text-2xl font-black text-[#0B213F]">{selectedStudent.name}</DialogTitle>
                                 <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {selectedStudent.branch}</DialogDescription>
+                                <Button variant="outline" size="sm" className="absolute top-4 right-12 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); /* Link to students page with edit if needed */ }}>Edit</Button>
                             </div>
                             <div className="p-6 grid gap-4 bg-[#f8fafc]">
                                 <div className="grid grid-cols-2 gap-4">
@@ -388,6 +393,50 @@ export default function SchedulePage() {
                         <Button variant="outline" onClick={() => setIsNotifyModalOpen(false)}>Cancel</Button>
                         <Button onClick={() => { toast.success("Notification sent successfully"); setIsNotifyModalOpen(false); }} className="font-bold">
                             Send Message
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 4.5.10 Freeze Membership Modal */}
+            <Dialog open={isFreezeModalOpen} onOpenChange={setIsFreezeModalOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <div className="bg-blue-600 p-6 text-white relative">
+                        <Snowflake className="absolute top-4 right-4 w-12 h-12 opacity-20 rotate-12" />
+                        <DialogTitle className="text-xl font-black">Freeze Membership</DialogTitle>
+                        <DialogDescription className="text-blue-100 font-medium">
+                            Temporary pause membership for {selectedStudent?.displayName}
+                        </DialogDescription>
+                    </div>
+                    <div className="p-6 grid gap-4 bg-white">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Freeze From</Label>
+                                <Input type="date" defaultValue="2026-03-12" className="rounded-xl border-slate-200 font-bold h-11" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Resume Date</Label>
+                                <Input type="date" className="rounded-xl border-slate-200 font-bold h-11" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Comment / Reason</Label>
+                            <Textarea 
+                                placeholder="E.g., Medical leave, Vacation, Exams..." 
+                                className="min-h-[100px] rounded-xl border-slate-200 font-medium resize-none focus-visible:ring-blue-500/20"
+                            />
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex items-start gap-3 mt-2">
+                            <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
+                                Freezing will pause the attendance tracking and extend the membership expiry date by the duration of the freeze.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 mt-0">
+                        <Button variant="ghost" onClick={() => setIsFreezeModalOpen(false)} className="font-bold rounded-xl h-11 px-6">Cancel</Button>
+                        <Button onClick={() => { toast.success("Membership frozen successfully"); setIsFreezeModalOpen(false); }} className="bg-blue-600 hover:bg-blue-700 font-black rounded-xl h-11 px-8 shadow-lg shadow-blue-600/20">
+                            Confirm Freeze
                         </Button>
                     </DialogFooter>
                 </DialogContent>
