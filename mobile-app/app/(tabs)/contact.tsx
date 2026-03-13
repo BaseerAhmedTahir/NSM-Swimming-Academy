@@ -151,20 +151,20 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        padding: theme.spacing.xl,
-        paddingBottom: 120,
+        padding: theme.spacing.lg,
+        paddingBottom: 160,
     },
     header: {
         marginBottom: 25,
     },
     headerTitle: {
-        fontSize: 32,
+        fontSize: 28,
         fontFamily: 'Nunito_900Black',
         color: theme.colors.textPrimary,
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontFamily: 'Poppins_400Regular',
         color: theme.colors.textSecondary,
     },
@@ -175,9 +175,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     tabButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 25,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -188,15 +188,15 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 14,
+        fontSize: 13,
         color: 'rgba(255, 255, 255, 0.5)',
     },
     activeTabText: {
         color: theme.colors.primary,
     },
     infoCard: {
-        padding: 24,
-        marginBottom: 30,
+        padding: 16,
+        marginBottom: 20,
         backgroundColor: 'rgba(255, 255, 255, 0.03)',
     },
     branchHeader: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     },
     branchDetailName: {
         fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 20,
+        fontSize: 18,
         color: theme.colors.textPrimary,
         marginBottom: 2,
     },
@@ -240,9 +240,9 @@ const styles = StyleSheet.create({
     contactText: {
         flex: 1,
         fontFamily: 'Poppins_400Regular',
-        fontSize: 14,
+        fontSize: 13,
         color: theme.colors.textSecondary,
-        lineHeight: 20,
+        lineHeight: 18,
     },
     actionGrid: {
         flexDirection: 'row',

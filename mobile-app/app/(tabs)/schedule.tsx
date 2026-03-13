@@ -128,7 +128,7 @@ export default function ScheduleScreen() {
                                         </View>
                                         <View style={styles.classInfoMain}>
                                             <Text style={styles.classTitle}>{currentStudent.level} Swim Class</Text>
-                                            <View style={styles.statusBadge}>
+                                            <View style={styles.upcomingBadge}>
                                                 <Text style={styles.statusText}>{cls.status}</Text>
                                             </View>
                                             <View style={styles.classDetRow}>
@@ -165,10 +165,10 @@ export default function ScheduleScreen() {
                                     </View>
 
                                     <TouchableOpacity 
-                                        style={styles.cancelBookingBtn}
+                                        style={styles.cancelBtn}
                                         onPress={() => handleCancelClass(cls)}
                                     >
-                                        <Text style={styles.cancelBookingText}>Cancel Booking</Text>
+                                        <Text style={styles.cancelText}>Cancel Booking</Text>
                                     </TouchableOpacity>
                                 </GlassCard>
                             ))}
@@ -194,25 +194,25 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: theme.spacing.xl,
-        paddingTop: 20,
+        padding: theme.spacing.lg,
+        paddingTop: 10,
     },
     headerTitle: {
-        fontSize: 34,
+        fontSize: 28,
         fontFamily: 'Nunito_900Black',
         color: theme.colors.textPrimary,
     },
     dateSelectorContainer: {
-        marginBottom: 30,
+        marginBottom: 20,
     },
     dateSelectorScroll: {
-        paddingHorizontal: theme.spacing.xl,
-        gap: 12,
+        paddingHorizontal: theme.spacing.lg,
+        gap: 10,
     },
     dateCard: {
-        width: 60,
-        height: 80,
-        borderRadius: 18,
+        width: 54,
+        height: 72,
+        borderRadius: 15,
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -225,34 +225,35 @@ const styles = StyleSheet.create({
         shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 5,
+        shadowRadius: 8,
+        elevation: 4,
     },
     dayName: {
         fontFamily: 'Poppins_500Medium',
-        fontSize: 12,
+        fontSize: 11,
         color: theme.colors.textSecondary,
-        marginBottom: 6,
+        marginBottom: 4,
     },
     dayNum: {
         fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 22,
+        fontSize: 18,
         color: theme.colors.textPrimary,
     },
     selectedDateText: {
         color: theme.colors.primary,
     },
     listContent: {
-        paddingHorizontal: theme.spacing.xl,
-        paddingBottom: 120,
+        paddingHorizontal: theme.spacing.lg,
+        paddingBottom: 160,
         flexGrow: 1,
     },
     classesList: {
-        gap: 20,
+        gap: 16,
     },
     classCard: {
-        padding: 20,
+        padding: 16,
         backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        position: 'relative',
     },
     classTopRow: {
         flexDirection: 'row',
@@ -262,21 +263,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(11, 246, 246, 0.12)',
         borderWidth: 1,
         borderColor: 'rgba(11, 246, 246, 0.2)',
-        borderRadius: 18,
-        padding: 12,
+        borderRadius: 15,
+        padding: 10,
         alignItems: 'center',
-        minWidth: 70,
-        marginRight: 16,
+        minWidth: 60,
+        marginRight: 12,
     },
     classMonth: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 12,
+        fontSize: 11,
         color: theme.colors.primary,
         opacity: 0.8,
     },
     classDay: {
         fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 26,
+        fontSize: 22,
         color: theme.colors.primary,
     },
     classInfoMain: {
@@ -284,55 +285,57 @@ const styles = StyleSheet.create({
     },
     classTitle: {
         fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 20,
+        fontSize: 18,
         color: theme.colors.textPrimary,
-        marginBottom: 5,
+        marginBottom: 4,
+        paddingRight: 80, // Space for badge
     },
-    statusBadge: {
-        alignSelf: 'flex-start',
+    upcomingBadge: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
         backgroundColor: 'rgba(11, 246, 246, 0.1)',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: 'rgba(11, 246, 246, 0.2)',
-        marginBottom: 12,
     },
     statusText: {
         color: theme.colors.primary,
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 11,
+        fontSize: 10,
         textTransform: 'uppercase',
     },
     classDetRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 3,
     },
     classDetText: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 14,
+        fontSize: 13,
         color: theme.colors.textSecondary,
-        marginLeft: 8,
+        marginLeft: 6,
     },
     divider: {
         height: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        marginVertical: 16,
+        marginVertical: 12,
     },
     coachRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
     },
     coachAvatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 15,
+        width: 44,
+        height: 44,
+        borderRadius: 12,
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15,
+        marginRight: 12,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -342,9 +345,9 @@ const styles = StyleSheet.create({
     },
     coachName: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 16,
+        fontSize: 14,
         color: theme.colors.textPrimary,
-        marginBottom: 2,
+        marginBottom: 1,
     },
     ratingRow: {
         flexDirection: 'row',
@@ -353,54 +356,54 @@ const styles = StyleSheet.create({
     },
     ratingText: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 12,
+        fontSize: 11,
         color: theme.colors.textSecondary,
-        marginLeft: 5,
+        marginLeft: 4,
     },
-    cancelBookingBtn: {
+    cancelBtn: {
         width: '100%',
-        paddingVertical: 14,
-        borderRadius: 15,
+        paddingVertical: 12,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 82, 82, 0.3)',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        backgroundColor: 'rgba(255, 82, 82, 0.08)',
     },
-    cancelBookingText: {
+    cancelText: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 15,
-        color: 'rgba(255, 255, 255, 0.5)',
+        fontSize: 14,
+        color: theme.colors.error,
     },
     emptyStateContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 60,
+        paddingVertical: 40,
     },
     emptyCircle: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         backgroundColor: 'rgba(11, 246, 246, 0.08)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: 'rgba(11, 246, 246, 0.2)',
     },
     emptyTitle: {
         fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 24,
+        fontSize: 22,
         color: theme.colors.textPrimary,
-        marginBottom: 8,
+        marginBottom: 6,
     },
     emptySubtitle: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 15,
+        fontSize: 14,
         color: theme.colors.textSecondary,
         textAlign: 'center',
         paddingHorizontal: 40,
-        lineHeight: 22,
+        lineHeight: 20,
     }
 });

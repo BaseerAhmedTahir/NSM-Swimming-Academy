@@ -70,23 +70,23 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     headerTitle: {
-        fontSize: 32,
+        fontSize: 28,
         fontFamily: 'Nunito_900Black',
         color: theme.colors.textPrimary,
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontFamily: 'Poppins_400Regular',
         color: theme.colors.textSecondary,
     },
     listContent: {
-        paddingHorizontal: theme.spacing.xl,
-        paddingBottom: 120,
-        gap: 12,
+        paddingHorizontal: theme.spacing.lg,
+        paddingBottom: 160,
+        gap: 10,
     },
     notificationCard: {
-        padding: 18,
+        padding: 14,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.03)',
@@ -96,12 +96,12 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(11, 246, 246, 0.15)',
     },
     iconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: 14,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
     },
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     title: {
         flex: 1,
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 15,
+        fontSize: 14,
         color: theme.colors.textPrimary,
     },
     unreadTitle: {
@@ -131,9 +131,9 @@ const styles = StyleSheet.create({
     },
     message: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 13,
+        fontSize: 12,
         color: theme.colors.textSecondary,
-        lineHeight: 18,
+        lineHeight: 16,
     },
     unreadDot: {
         width: 8,
