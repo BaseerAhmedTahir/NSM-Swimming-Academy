@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../constants/colors';
+import { theme } from '../constants/theme';
 import Logo from '../components/Logo';
+import AppBackground from '../components/ui/AppBackground';
+import GlassCard from '../components/ui/GlassCard';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import AppInput from '../components/ui/AppInput';
 
 export default function LoginScreen() {
     const [activeTab, setActiveTab] = useState('login'); // 'login' or 'register'
     const router = useRouter();
+
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
     const handleAuth = () => {
         // Mock authentication: anywhere goes to branch selection
@@ -18,286 +24,245 @@ export default function LoginScreen() {
         router.replace('/branch-selection');
     };
 
-    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
-
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-                {/* Top Wave Decoration */}
-                <View style={styles.topWaveContainer}>
-                    <View style={styles.waveLayer1} />
-                    <View style={styles.waveLayer2} />
-                </View>
-
-                <View style={styles.headerContainer}>
-                    <Logo size={80} textVisible={false} />
-                    <Text style={styles.welcomeText}>Welcome to NSM</Text>
-                </View>
-
-                <View style={styles.card}>
-                    {/* Tab Switcher */}
-                    <View style={styles.tabContainer}>
-                        <TouchableOpacity
-                            style={[styles.tab, activeTab === 'login' && styles.activeTab]}
-                            onPress={() => setActiveTab('login')}
-                        >
-                            <Text style={[styles.tabText, activeTab === 'login' && styles.activeTabText]}>Login</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.tab, activeTab === 'register' && styles.activeTab]}
-                            onPress={() => setActiveTab('register')}
-                        >
-                            <Text style={[styles.tabText, activeTab === 'register' && styles.activeTabText]}>Register</Text>
-                        </TouchableOpacity>
+        <AppBackground>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    
+                    <View style={styles.headerContainer}>
+                        <Logo size={100} textVisible={false} />
+                        <Text style={styles.welcomeText}>Welcome to NSM</Text>
                     </View>
 
-                    {/* Form Content */}
-                    <View style={styles.formContainer}>
-                        {activeTab === 'register' && (
-                            <View style={styles.inputGroup}>
-                                <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <TextInput placeholder="Full Name" style={styles.input} placeholderTextColor={colors.textSecondary} />
-                            </View>
-                        )}
+                    <GlassCard style={styles.cardContainer} hasGlow>
+                        {/* Tab Switcher */}
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                style={[styles.tab, activeTab === 'login' && styles.activeTab]}
+                                onPress={() => setActiveTab('login')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.tabText, activeTab === 'login' && styles.activeTabText]}>Login</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tab, activeTab === 'register' && styles.activeTab]}
+                                onPress={() => setActiveTab('register')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.tabText, activeTab === 'register' && styles.activeTabText]}>Register</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <View style={styles.inputGroup}>
-                            {activeTab === 'login' ? (
-                                <Ionicons name="call-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                            ) : (
-                                <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                        {/* Form Content */}
+                        <View style={styles.formContainer}>
+                            {activeTab === 'register' && (
+                                <AppInput 
+                                    icon="person-outline" 
+                                    placeholder="Full Name" 
+                                />
                             )}
-                            {activeTab === 'login' && <Text style={styles.prefix}>+971</Text>}
-                            <TextInput
-                                placeholder={activeTab === 'login' ? 'Phone Number' : 'Email Address'}
-                                style={styles.input}
-                                keyboardType={activeTab === 'login' ? 'phone-pad' : 'email-address'}
-                                placeholderTextColor={colors.textSecondary}
+
+                            {activeTab === 'login' && (
+                                <View style={styles.phoneInputGroup}>
+                                    <View style={styles.iconContainer}>
+                                        <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
+                                    </View>
+                                    <Text style={styles.prefix}>+971</Text>
+                                    <TextInput
+                                        placeholder="Phone Number"
+                                        style={styles.phoneTextInput}
+                                        keyboardType="phone-pad"
+                                        placeholderTextColor={theme.colors.textSecondary}
+                                    />
+                                </View>
+                            )}
+
+                            {activeTab === 'register' && (
+                                <AppInput 
+                                    icon="mail-outline" 
+                                    placeholder="Email Address" 
+                                    keyboardType="email-address"
+                                />
+                            )}
+
+                            {activeTab === 'register' && (
+                                <View style={styles.phoneInputGroup}>
+                                    <View style={styles.iconContainer}>
+                                        <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
+                                    </View>
+                                    <Text style={styles.prefix}>+971</Text>
+                                    <TextInput
+                                        placeholder="Phone Number"
+                                        style={styles.phoneTextInput}
+                                        keyboardType="phone-pad"
+                                        placeholderTextColor={theme.colors.textSecondary}
+                                    />
+                                </View>
+                            )}
+
+                            <AppInput 
+                                icon="lock-closed-outline" 
+                                placeholder="Password" 
+                                secureTextEntry
+                            />
+
+                            {activeTab === 'register' && (
+                                <AppInput 
+                                    icon="lock-closed-outline" 
+                                    placeholder="Confirm Password" 
+                                    secureTextEntry
+                                />
+                            )}
+
+                            {activeTab === 'register' && (
+                                <TouchableOpacity 
+                                    style={styles.checkboxContainer} 
+                                    onPress={() => setAcceptPrivacy(!acceptPrivacy)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
+                                        {acceptPrivacy && <Ionicons name="checkmark" size={14} color={theme.colors.background} />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>
+                                        I agree to the <Text style={styles.privacyLink}>Privacy Policy</Text>
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {activeTab === 'login' && (
+                                <TouchableOpacity>
+                                    <Text style={styles.forgotPassword}>Forgot Password?</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            <PrimaryButton 
+                                title={activeTab === 'login' ? 'Login' : 'Register'} 
+                                onPress={handleAuth} 
+                                style={styles.actionButton}
                             />
                         </View>
-
-                        {activeTab === 'register' && (
-                            <View style={styles.inputGroup}>
-                                <Ionicons name="call-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <Text style={styles.prefix}>+971</Text>
-                                <TextInput placeholder="Phone Number" style={styles.input} keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
-                            </View>
-                        )}
-
-                        <View style={styles.inputGroup}>
-                            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput placeholder="Password" style={styles.input} secureTextEntry placeholderTextColor={colors.textSecondary} />
-                        </View>
-
-                        {activeTab === 'register' && (
-                            <View style={styles.inputGroup}>
-                                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                                <TextInput placeholder="Confirm Password" style={styles.input} secureTextEntry placeholderTextColor={colors.textSecondary} />
-                            </View>
-                        )}
-
-                        {activeTab === 'register' && (
-                            <TouchableOpacity 
-                                style={styles.checkboxContainer} 
-                                onPress={() => setAcceptPrivacy(!acceptPrivacy)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
-                                    {acceptPrivacy && <Ionicons name="checkmark" size={14} color={colors.card} />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>
-                                    I agree to the <Text style={styles.privacyLink}>Privacy Policy</Text>
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {activeTab === 'login' && (
-                            <TouchableOpacity>
-                                <Text style={styles.forgotPassword}>Forgot Password?</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        <TouchableOpacity style={styles.actionButton} onPress={handleAuth}>
-                            <Text style={styles.actionButtonText}>
-                                {activeTab === 'login' ? 'Login' : 'Register'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-            </ScrollView>
-        </KeyboardAvoidingView>
+                    </GlassCard>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </AppBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-    },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 40,
-    },
-    topWaveContainer: {
-        height: 150,
-        width: '100%',
-        overflow: 'hidden',
-        position: 'absolute',
-        top: 0,
-    },
-    waveLayer1: {
-        position: 'absolute',
-        top: -100,
-        left: -50,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: 'rgba(79, 195, 247, 0.4)', // Light water blue
-    },
-    waveLayer2: {
-        position: 'absolute',
-        top: -150,
-        right: -50,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: 'rgba(2, 136, 209, 0.2)', // Deep pool blue
+        paddingBottom: theme.spacing.xl,
+        justifyContent: 'center',
     },
     headerContainer: {
         alignItems: 'center',
-        marginTop: 100,
-        marginBottom: 30,
+        marginTop: 60,
+        marginBottom: theme.spacing.xl,
     },
     welcomeText: {
-        fontSize: 24,
+        fontSize: 26,
         fontFamily: 'Nunito_800ExtraBold',
-        color: colors.textPrimary,
-        marginTop: 15,
+        color: theme.colors.textPrimary,
+        marginTop: theme.spacing.lg,
     },
-    card: {
-        backgroundColor: colors.card,
-        marginHorizontal: 20,
-        borderRadius: 24,
-        padding: 20,
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 8,
+    cardContainer: {
+        marginHorizontal: theme.spacing.lg,
     },
     tabContainer: {
         flexDirection: 'row',
-        backgroundColor: colors.background,
-        borderRadius: 12,
+        backgroundColor: 'rgba(45, 58, 72, 0.5)',
+        borderRadius: 20,
         padding: 4,
-        marginBottom: 24,
+        marginBottom: theme.spacing.xl,
+        borderWidth: 1,
+        borderColor: theme.colors.borderSoft,
     },
     tab: {
         flex: 1,
         paddingVertical: 12,
         alignItems: 'center',
-        borderRadius: 10,
+        borderRadius: 16,
     },
     activeTab: {
-        backgroundColor: colors.card,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        backgroundColor: theme.colors.background,
+        borderColor: theme.colors.primary20,
+        borderWidth: 1,
     },
     tabText: {
-        fontFamily: 'Poppins_500Medium',
-        color: colors.textSecondary,
-        fontSize: 14,
+        fontFamily: 'Poppins_600SemiBold',
+        color: theme.colors.textSecondary,
+        fontSize: 15,
     },
     activeTabText: {
-        color: colors.primaryDark,
-        fontFamily: 'Poppins_600SemiBold',
+        color: theme.colors.primary,
     },
     formContainer: {
-        gap: 16,
+        gap: theme.spacing.lg,
     },
-    inputGroup: {
+    phoneInputGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.background,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        height: 56,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: 'rgba(79, 195, 247, 0.2)',
+        borderColor: theme.colors.borderSoft,
+        height: 56,
+        paddingHorizontal: theme.spacing.lg,
     },
-    inputIcon: {
-        marginRight: 10,
+    iconContainer: {
+        marginRight: theme.spacing.md,
     },
     prefix: {
         fontFamily: 'Poppins_500Medium',
-        color: colors.textPrimary,
+        color: theme.colors.primary,
         marginRight: 8,
         borderRightWidth: 1,
-        borderRightColor: '#ccc',
+        borderRightColor: theme.colors.borderSoft,
         paddingRight: 8,
     },
-    input: {
+    phoneTextInput: {
         flex: 1,
         fontFamily: 'Poppins_400Regular',
-        color: colors.textPrimary,
-        fontSize: 15,
+        color: theme.colors.textPrimary,
+        fontSize: 16,
     },
     forgotPassword: {
         textAlign: 'right',
-        color: colors.primaryDark,
+        color: theme.colors.textSecondary,
         fontFamily: 'Poppins_500Medium',
-        fontSize: 13,
+        fontSize: 14,
     },
     actionButton: {
-        backgroundColor: colors.primaryDark,
-        height: 56,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 10,
-        shadowColor: colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    actionButtonText: {
-        color: colors.card,
-        fontSize: 16,
-        fontFamily: 'Nunito_800ExtraBold',
+        marginTop: theme.spacing.sm,
     },
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 10,
+        marginVertical: 4,
     },
     checkbox: {
-        width: 22,
-        height: 22,
+        width: 20,
+        height: 20,
         borderRadius: 6,
         borderWidth: 2,
-        borderColor: colors.primaryDark,
+        borderColor: theme.colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,
     },
     checkboxChecked: {
-        backgroundColor: colors.primaryDark,
+        backgroundColor: theme.colors.primary,
     },
     checkboxLabel: {
         fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: colors.textPrimary,
+        color: theme.colors.textSecondary,
     },
     privacyLink: {
-        color: colors.primaryDark,
+        color: theme.colors.primary,
         fontFamily: 'Poppins_600SemiBold',
     },
 });

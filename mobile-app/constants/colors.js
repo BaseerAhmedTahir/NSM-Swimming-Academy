@@ -1,15 +1,16 @@
 export const colors = {
-  primary: '#4FC3F7', // Light Blue (Water)
-  primaryDark: '#0288D1', // Deep Pool Blue
-  accentTeal: '#26C6DA', // Splash Teal
-  accentYellow: '#FFD54F', // Sunshine Yellow
-  accentOrange: '#FF8A65', // Warm Coral
-  success: '#66BB6A', // Success Green
-  warning: '#FFA726', // Pending
-  error: '#EF5350', // Error / Absent
-  background: '#E8F5FE', // Very light blue wash
-  card: '#FFFFFF', // Card Background
-  textPrimary: '#1A237E', // Dark Navy
-  textSecondary: '#546E7A', // Muted Blue Grey
-  attended: '#FFF176', // Yellow highlight
+  primary: '#0bf6f6', 
+  primaryDark: '#0bf6f6', 
+  secondary: '#001e3f', 
+  background: '#001e3f',
+  card: 'rgba(45, 58, 72, 0.8)',
+  inputBg: 'rgba(45, 58, 72, 0.6)',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#a0aab2',
+  accent: '#0bf6f6',
+  error: '#FF5252',
+  success: '#4CAF50',
+  warning: '#FFC107',
+  inactiveTab: '#a0aab2',
+  activeTab: '#0bf6f6',
 };

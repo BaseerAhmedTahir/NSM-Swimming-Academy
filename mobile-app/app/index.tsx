@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../constants/colors';
 import Logo from '../components/Logo';
+import AppBackground from '../components/ui/AppBackground';
+import { theme } from '../constants/theme';
 
 export default function SplashScreen() {
     const router = useRouter();
@@ -17,64 +17,36 @@ export default function SplashScreen() {
     }, [router]);
 
     return (
-        <LinearGradient
-            colors={[colors.background, colors.primary]}
-            style={styles.container}
-        >
-            <Logo size={120} textVisible={false} />
-            <Text style={styles.appName}>NSM</Text>
-            <Text style={styles.tagline}>Dive Into Excellence</Text>
-
-            {/* Decorative Wave Placeholder */}
-            <View style={styles.waveContainer}>
-                <View style={styles.wave1} />
-                <View style={styles.wave2} />
+        <AppBackground style={styles.container}>
+            <View style={styles.centerContent}>
+                <Logo size={140} textVisible={false} />
             </View>
-        </LinearGradient>
+            <Text style={styles.tagline}>INHALE CONFIDENCE EXHALE FEAR</Text>
+        </AppBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
     },
-    appName: {
-        fontSize: 42,
-        fontFamily: 'Nunito_900Black',
-        color: colors.textPrimary,
-        marginTop: 20,
+    centerContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     tagline: {
-        fontSize: 20,
-        fontFamily: 'Poppins_500Medium',
-        color: colors.primaryDark,
-        marginTop: 10,
-    },
-    waveContainer: {
-        position: 'absolute',
-        bottom: 0,
-        width: '100%',
-        height: 120,
-        flexDirection: 'row',
-    },
-    wave1: {
-        position: 'absolute',
-        bottom: -60,
-        width: '150%',
-        height: 150,
-        backgroundColor: 'rgba(2, 136, 209, 0.4)',
-        borderRadius: 300,
-        left: '-25%',
-    },
-    wave2: {
-        position: 'absolute',
-        bottom: -80,
-        width: '150%',
-        height: 150,
-        backgroundColor: 'rgba(26, 35, 126, 0.6)',
-        borderRadius: 300,
-        left: '-10%',
+        fontSize: 18,
+        fontFamily: 'Nunito_800ExtraBold',
+        color: '#FFFFFF',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 50,
+        textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
     }
 });
+

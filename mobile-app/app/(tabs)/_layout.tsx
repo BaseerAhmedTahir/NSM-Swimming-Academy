@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,17 +11,15 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopWidth: 0,
-          elevation: 10,
-          shadowColor: colors.textPrimary,
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 10,
-          height: 60 + insets.bottom,
+          backgroundColor: 'rgba(0, 30, 63, 0.90)', // Dark transparent
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.borderSoft,
+          elevation: 0, // Remove shadow for glass feel
+          position: 'absolute', // Make it floating/overlaying the background
+          height: 65 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           paddingTop: 10,
         },

@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
+import AppBackground from '../../components/ui/AppBackground';
+import GlassCard from '../../components/ui/GlassCard';
 
 const branches = [
     {
@@ -30,149 +32,163 @@ const branches = [
 
 export default function ContactScreen() {
     const handleCall = (phone) => {
-        // Mock call action
         console.log(`Calling ${phone}`);
     };
 
     const handleEmail = () => {
-        // Mock email action
         console.log('Sending email to info@nsm.com');
     };
 
     const handleSocial = (platform) => {
-        // Mock social media action
         console.log(`Opening ${platform}`);
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <AppBackground>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Contact Us</Text>
-                    <Text style={styles.subtitle}>We're here to help you make a splash!</Text>
-                </View>
-
-                {/* Primary Action Buttons */}
-                <View style={styles.actionRow}>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primaryDark }]} onPress={() => handleCall('+971501234567')}>
-                        <Ionicons name="call" size={24} color={colors.card} />
-                        <Text style={styles.actionText}>Call Us</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#25D366' }]} onPress={() => handleCall('+971501234567')}>
-                        <Ionicons name="logo-whatsapp" size={24} color={colors.card} />
-                        <Text style={styles.actionText}>WhatsApp</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Email Support */}
-                <TouchableOpacity style={styles.emailCard} onPress={handleEmail}>
-                    <View style={styles.iconCircle}>
-                        <Ionicons name="mail" size={20} color={colors.primary} />
+                    <View style={styles.header}>
+                        <Text style={styles.headerTitle}>Contact Us</Text>
+                        <Text style={styles.subtitle}>We're here to help you make a splash!</Text>
                     </View>
-                    <View style={styles.emailInfo}>
-                        <Text style={styles.emailLabel}>Email Support</Text>
-                        <Text style={styles.emailAddress}>info@nsm.com</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
 
-                {/* Branch Locations */}
-                <Text style={styles.sectionTitle}>Our Locations</Text>
-                <View style={styles.locationsContainer}>
-                    {branches.map(branch => (
-                        <View key={branch.id} style={styles.branchCard}>
-                            <View style={styles.branchHeader}>
-                                <Ionicons name="location" size={20} color={colors.error} />
-                                <Text style={styles.branchName}>{branch.name}</Text>
+                    {/* Primary Action Buttons */}
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => handleCall('+971501234567')}>
+                            <GlassCard style={styles.actionBtn}>
+                                <Ionicons name="call" size={24} color={theme.colors.primary} />
+                                <Text style={styles.actionText}>Call Us</Text>
+                            </GlassCard>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => handleCall('+971501234567')}>
+                            <GlassCard style={[styles.actionBtn, styles.whatsappBtn]}>
+                                <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
+                                <Text style={[styles.actionText, { color: '#25D366' }]}>WhatsApp</Text>
+                            </GlassCard>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Email Support */}
+                    <TouchableOpacity onPress={handleEmail}>
+                        <GlassCard style={styles.emailCard}>
+                            <View style={styles.iconCircle}>
+                                <Ionicons name="mail" size={20} color={theme.colors.primary} />
                             </View>
-                            <View style={styles.branchDetail}>
-                                <Text style={styles.detailText}>{branch.address}</Text>
+                            <View style={styles.emailInfo}>
+                                <Text style={styles.emailLabel}>Email Support</Text>
+                                <Text style={styles.emailAddress}>info@nsm.com</Text>
                             </View>
-                            <View style={styles.branchDetail}>
-                                <Ionicons name="call-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                                <Text style={styles.detailText}>{branch.phone}</Text>
-                            </View>
-                            <View style={styles.branchDetail}>
-                                <Ionicons name="time-outline" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                                <Text style={styles.detailText}>{branch.hours}</Text>
-                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+                        </GlassCard>
+                    </TouchableOpacity>
+
+                    {/* Branch Locations */}
+                    <Text style={styles.sectionTitle}>Our Locations</Text>
+                    <View style={styles.locationsContainer}>
+                        {branches.map(branch => (
+                            <GlassCard key={branch.id} style={styles.branchCard}>
+                                <View style={styles.branchHeader}>
+                                    <Ionicons name="location" size={20} color={theme.colors.error} />
+                                    <Text style={styles.branchName}>{branch.name}</Text>
+                                </View>
+                                <View style={styles.branchDetail}>
+                                    <Text style={styles.detailText}>{branch.address}</Text>
+                                </View>
+                                <View style={styles.branchDetail}>
+                                    <Ionicons name="call-outline" size={14} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
+                                    <Text style={styles.detailText}>{branch.phone}</Text>
+                                </View>
+                                <View style={styles.branchDetail}>
+                                    <Ionicons name="time-outline" size={14} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
+                                    <Text style={styles.detailText}>{branch.hours}</Text>
+                                </View>
+                            </GlassCard>
+                        ))}
+                    </View>
+
+                    {/* Social Media */}
+                    <View style={styles.socialSection}>
+                        <Text style={styles.socialTitle}>Follow Us</Text>
+                        <View style={styles.socialIconsRow}>
+                            <TouchableOpacity onPress={() => handleSocial('Instagram')}>
+                                <View style={styles.socialButton}>
+                                    <Ionicons name="logo-instagram" size={28} color="#E1306C" />
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleSocial('Facebook')}>
+                                <View style={styles.socialButton}>
+                                    <Ionicons name="logo-facebook" size={28} color="#1877F2" />
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleSocial('YouTube')}>
+                                <View style={styles.socialButton}>
+                                    <Ionicons name="logo-youtube" size={28} color="#FF0000" />
+                                </View>
+                            </TouchableOpacity>
                         </View>
-                    ))}
-                </View>
-
-                {/* Social Media */}
-                <View style={styles.socialSection}>
-                    <Text style={styles.socialTitle}>Follow Us</Text>
-                    <View style={styles.socialIconsRow}>
-                        <TouchableOpacity style={styles.socialButton} onPress={() => handleSocial('Instagram')}>
-                            <Ionicons name="logo-instagram" size={28} color="#E1306C" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton} onPress={() => handleSocial('Facebook')}>
-                            <Ionicons name="logo-facebook" size={28} color="#1877F2" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton} onPress={() => handleSocial('YouTube')}>
-                            <Ionicons name="logo-youtube" size={28} color="#FF0000" />
-                        </TouchableOpacity>
                     </View>
-                </View>
 
-                {/* Map Placeholder */}
-                <View style={styles.mapContainer}>
-                    <View style={styles.mapPlaceholder}>
-                        <Ionicons name="map" size={40} color={colors.primary} />
-                        <Text style={styles.mapText}>Map Placeholder for Prototype</Text>
-                    </View>
-                </View>
+                    {/* Map Placeholder */}
+                    <GlassCard style={styles.mapContainer}>
+                        <View style={styles.mapPlaceholder}>
+                            <Ionicons name="map" size={40} color={theme.colors.primary} />
+                            <Text style={styles.mapText}>Map Placeholder for Prototype</Text>
+                        </View>
+                    </GlassCard>
 
-            </ScrollView>
-        </SafeAreaView>
+                </ScrollView>
+            </SafeAreaView>
+        </AppBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     scrollContent: {
-        padding: 20,
-        paddingBottom: 40,
+        padding: theme.spacing.xl,
+        paddingBottom: 100,
     },
     header: {
-        marginBottom: 24,
+        marginBottom: theme.spacing.xl,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 32,
         fontFamily: 'Nunito_900Black',
-        color: colors.textPrimary,
+        color: theme.colors.textPrimary,
         marginBottom: 8,
+        textShadowColor: 'rgba(11, 246, 246, 0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 16,
         fontFamily: 'Poppins_400Regular',
-        color: colors.textSecondary,
+        color: theme.colors.textSecondary,
     },
     actionRow: {
         flexDirection: 'row',
         gap: 16,
-        marginBottom: 20,
+        marginBottom: theme.spacing.xl,
     },
     actionBtn: {
-        flex: 1,
         height: 56,
-        borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
+        padding: 0,
+        backgroundColor: 'rgba(11, 246, 246, 0.1)',
+        borderColor: 'rgba(11, 246, 246, 0.3)',
+        borderWidth: 1,
+    },
+    whatsappBtn: {
+        backgroundColor: 'rgba(37, 211, 102, 0.1)',
+        borderColor: 'rgba(37, 211, 102, 0.3)',
     },
     actionText: {
-        color: colors.card,
+        color: theme.colors.primary,
         fontFamily: 'Nunito_800ExtraBold',
         fontSize: 16,
         marginLeft: 8,
@@ -180,60 +196,48 @@ const styles = StyleSheet.create({
     emailCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        padding: 16,
+        padding: theme.spacing.lg,
         marginBottom: 30,
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
     },
     iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(79, 195, 247, 0.15)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(11, 246, 246, 0.15)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: theme.spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(11, 246, 246, 0.3)',
     },
     emailInfo: {
         flex: 1,
     },
     emailLabel: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 13,
-        color: colors.textSecondary,
+        fontSize: 14,
+        color: theme.colors.textSecondary,
     },
     emailAddress: {
         fontFamily: 'Poppins_600SemiBold',
         fontSize: 16,
-        color: colors.textPrimary,
+        color: theme.colors.textPrimary,
         marginTop: 2,
     },
     sectionTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontFamily: 'Nunito_800ExtraBold',
-        color: colors.textPrimary,
-        marginBottom: 16,
+        color: theme.colors.textPrimary,
+        marginBottom: theme.spacing.lg,
     },
     locationsContainer: {
-        gap: 16,
+        gap: theme.spacing.md,
         marginBottom: 30,
     },
     branchCard: {
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        padding: 16,
+        padding: theme.spacing.lg,
         borderLeftWidth: 4,
-        borderLeftColor: colors.primary,
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
+        borderLeftColor: theme.colors.primary,
     },
     branchHeader: {
         flexDirection: 'row',
@@ -242,8 +246,8 @@ const styles = StyleSheet.create({
     },
     branchName: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 16,
-        color: colors.textPrimary,
+        fontSize: 17,
+        color: theme.colors.textPrimary,
         marginLeft: 8,
     },
     branchDetail: {
@@ -254,8 +258,8 @@ const styles = StyleSheet.create({
     },
     detailText: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 13,
-        color: colors.textSecondary,
+        fontSize: 14,
+        color: theme.colors.textSecondary,
         flex: 1,
     },
     socialSection: {
@@ -264,8 +268,8 @@ const styles = StyleSheet.create({
     },
     socialTitle: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 16,
-        color: colors.textPrimary,
+        fontSize: 18,
+        color: theme.colors.textPrimary,
         marginBottom: 16,
     },
     socialIconsRow: {
@@ -276,36 +280,27 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: colors.card,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
     },
     mapContainer: {
         height: 200,
-        borderRadius: 16,
         overflow: 'hidden',
-        backgroundColor: colors.card,
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
+        padding: 0,
     },
     mapPlaceholder: {
         flex: 1,
-        backgroundColor: 'rgba(79, 195, 247, 0.1)',
+        backgroundColor: 'rgba(11, 246, 246, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     mapText: {
         fontFamily: 'Poppins_500Medium',
         fontSize: 14,
-        color: colors.primaryDark,
+        color: theme.colors.primary,
         marginTop: 10,
     }
 });

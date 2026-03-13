@@ -2,19 +2,21 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
 import { notifications } from '../../data/mockData';
+import AppBackground from '../../components/ui/AppBackground';
+import GlassCard from '../../components/ui/GlassCard';
 
 export default function NotificationsScreen() {
 
     const getIconData = (type) => {
         switch (type) {
-            case 'holiday': return { icon: 'calendar', color: colors.error, bg: 'rgba(239, 83, 80, 0.1)' };
-            case 'fee': return { icon: 'wallet', color: colors.warning, bg: 'rgba(255, 167, 38, 0.1)' };
-            case 'class': return { icon: 'time', color: colors.primaryDark, bg: 'rgba(2, 136, 209, 0.1)' };
-            case 'assessment': return { icon: 'star', color: colors.accentYellow, bg: 'rgba(255, 213, 79, 0.2)' };
-            case 'offer': return { icon: 'gift', color: colors.success, bg: 'rgba(102, 187, 106, 0.1)' };
-            default: return { icon: 'information-circle', color: colors.primary, bg: 'rgba(79, 195, 247, 0.1)' };
+            case 'holiday': return { icon: 'calendar', color: theme.colors.error, bg: 'rgba(239, 83, 80, 0.15)' };
+            case 'fee': return { icon: 'wallet', color: theme.colors.warning, bg: 'rgba(255, 167, 38, 0.15)' };
+            case 'class': return { icon: 'time', color: '#03A9F4', bg: 'rgba(3, 169, 244, 0.15)' };
+            case 'assessment': return { icon: 'star', color: '#FFD54F', bg: 'rgba(255, 213, 79, 0.15)' };
+            case 'offer': return { icon: 'gift', color: theme.colors.success, bg: 'rgba(102, 187, 106, 0.15)' };
+            default: return { icon: 'information-circle', color: theme.colors.primary, bg: 'rgba(11, 246, 246, 0.15)' };
         }
     };
 
@@ -23,7 +25,7 @@ export default function NotificationsScreen() {
         const dateStr = new Date(item.date).toLocaleDateString();
 
         return (
-            <View style={[styles.notificationCard, !item.read && styles.unreadCard]}>
+            <GlassCard style={[styles.notificationCard, !item.read && styles.unreadCard]}>
                 <View style={[styles.iconContainer, { backgroundColor: iconData.bg }]}>
                     <Ionicons name={iconData.icon} size={24} color={iconData.color} />
                 </View>
@@ -35,62 +37,58 @@ export default function NotificationsScreen() {
                     <Text style={styles.message}>{item.message}</Text>
                 </View>
                 {!item.read && <View style={styles.unreadIndicator} />}
-            </View>
+            </GlassCard>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Notifications</Text>
-            </View>
-            <FlatList
-                data={notifications}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderItem}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-            />
-        </SafeAreaView>
+        <AppBackground>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Notifications</Text>
+                </View>
+                <FlatList
+                    data={notifications}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                />
+            </SafeAreaView>
+        </AppBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     header: {
-        padding: 20,
-        backgroundColor: colors.background,
+        padding: theme.spacing.xl,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 32,
         fontFamily: 'Nunito_900Black',
-        color: colors.textPrimary,
+        color: theme.colors.textPrimary,
+        textShadowColor: 'rgba(11, 246, 246, 0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
     },
     listContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-        gap: 16,
+        paddingHorizontal: theme.spacing.xl,
+        paddingBottom: 100,
+        gap: theme.spacing.md,
     },
     notificationCard: {
-        backgroundColor: colors.card,
-        borderRadius: 16,
-        padding: 16,
+        padding: theme.spacing.lg,
         flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
         borderLeftWidth: 4,
         borderLeftColor: 'transparent',
     },
     unreadCard: {
-        borderLeftColor: colors.primary,
-        backgroundColor: 'rgba(79, 195, 247, 0.03)',
+        borderLeftColor: theme.colors.primary,
+        backgroundColor: 'rgba(11, 246, 246, 0.05)',
     },
     iconContainer: {
         width: 50,
@@ -98,7 +96,9 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: theme.spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     contentContainer: {
         flex: 1,
@@ -112,29 +112,35 @@ const styles = StyleSheet.create({
     title: {
         flex: 1,
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 16,
-        color: colors.textPrimary,
+        fontSize: 15,
+        color: theme.colors.textPrimary,
     },
     unreadTitle: {
         fontFamily: 'Poppins_700Bold',
+        color: theme.colors.primary,
     },
     date: {
         fontFamily: 'Poppins_400Regular',
         fontSize: 12,
-        color: colors.textSecondary,
+        color: theme.colors.textSecondary,
         marginLeft: 8,
     },
     message: {
         fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: colors.textSecondary,
+        color: theme.colors.textSecondary,
         lineHeight: 20,
     },
     unreadIndicator: {
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: colors.primary,
+        backgroundColor: theme.colors.primary,
         marginLeft: 12,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 5,
+        elevation: 3,
     }
 });

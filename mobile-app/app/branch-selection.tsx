@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../constants/colors';
+import { theme } from '../constants/theme';
+import AppBackground from '../components/ui/AppBackground';
+import GlassCard from '../components/ui/GlassCard';
+import PrimaryButton from '../components/ui/PrimaryButton';
 
 const branches = [
     { id: 'DXB', name: 'Dubai', icon: 'location' },
@@ -21,164 +24,151 @@ export default function BranchSelectionScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+        <AppBackground>
+            <SafeAreaView style={styles.container}>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                <View style={styles.header}>
-                    <Text style={styles.title}>Select Branch</Text>
-                    <Text style={styles.subtitle}>Choose your primary swimming academy location</Text>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Select Branch</Text>
+                        <Text style={styles.subtitle}>Choose your primary swimming academy location</Text>
+                    </View>
+
+                    <View style={styles.branchesContainer}>
+                        {branches.map(branch => {
+                            const isSelected = selectedBranch === branch.id;
+                            return (
+                                <TouchableOpacity
+                                    key={branch.id}
+                                    onPress={() => setSelectedBranch(branch.id)}
+                                    activeOpacity={0.8}
+                                >
+                                    <GlassCard 
+                                        style={[
+                                            styles.branchCard,
+                                            isSelected && styles.selectedCard
+                                        ]}
+                                        hasGlow={isSelected}
+                                    >
+                                        <View style={[
+                                            styles.iconContainer,
+                                            isSelected && styles.selectedIconContainer
+                                        ]}>
+                                            <Ionicons
+                                                name={branch.icon}
+                                                size={28}
+                                                color={isSelected ? theme.colors.background : theme.colors.primary}
+                                            />
+                                        </View>
+
+                                        <Text style={[
+                                            styles.branchName,
+                                            isSelected && styles.selectedBranchName
+                                        ]}>
+                                            {branch.name}
+                                        </Text>
+
+                                        {isSelected && (
+                                            <View style={styles.checkIcon}>
+                                                <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
+                                            </View>
+                                        )}
+                                    </GlassCard>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                </ScrollView>
+
+                <View style={styles.footer}>
+                    <PrimaryButton 
+                        title="Continue to Dashboard"
+                        onPress={handleContinue}
+                        style={[styles.continueButton, !selectedBranch && styles.disabledButton]}
+                        textStyle={!selectedBranch && styles.disabledButtonText}
+                    />
                 </View>
-
-                <View style={styles.branchesContainer}>
-                    {branches.map(branch => (
-                        <TouchableOpacity
-                            key={branch.id}
-                            style={[
-                                styles.branchCard,
-                                selectedBranch === branch.id && styles.selectedCard
-                            ]}
-                            onPress={() => setSelectedBranch(branch.id)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={[
-                                styles.iconContainer,
-                                selectedBranch === branch.id && styles.selectedIconContainer
-                            ]}>
-                                <Ionicons
-                                    name={branch.icon}
-                                    size={32}
-                                    color={selectedBranch === branch.id ? colors.card : colors.primary}
-                                />
-                            </View>
-
-                            <Text style={[
-                                styles.branchName,
-                                selectedBranch === branch.id && styles.selectedBranchName
-                            ]}>
-                                {branch.name}
-                            </Text>
-
-                            {selectedBranch === branch.id && (
-                                <View style={styles.checkIcon}>
-                                    <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-            </ScrollView>
-
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    style={[styles.continueButton, !selectedBranch && styles.disabledButton]}
-                    onPress={handleContinue}
-                    disabled={!selectedBranch}
-                >
-                    <Text style={styles.continueButtonText}>Continue to Dashboard</Text>
-                    <Ionicons name="arrow-forward" size={20} color={colors.card} style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+            </SafeAreaView>
+        </AppBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     scrollContent: {
-        padding: 24,
-        paddingTop: 60,
+        padding: theme.spacing.xl,
+        paddingTop: 80, // Extra padding for top
     },
     header: {
         marginBottom: 40,
     },
     title: {
-        fontSize: 28,
+        fontSize: 32,
         fontFamily: 'Nunito_800ExtraBold',
-        color: colors.textPrimary,
-        marginBottom: 8,
+        color: theme.colors.textPrimary,
+        marginBottom: theme.spacing.sm,
     },
     subtitle: {
         fontSize: 16,
         fontFamily: 'Poppins_400Regular',
-        color: colors.textSecondary,
+        color: theme.colors.textSecondary,
         lineHeight: 24,
     },
     branchesContainer: {
-        gap: 16,
+        gap: theme.spacing.lg,
     },
     branchCard: {
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: colors.textPrimary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-        borderWidth: 2,
-        borderColor: 'transparent',
+        paddingVertical: 16,
     },
     selectedCard: {
-        borderColor: colors.primary,
-        backgroundColor: 'rgba(79, 195, 247, 0.05)',
+        backgroundColor: 'rgba(11, 246, 246, 0.1)',
+        borderColor: theme.colors.primary,
     },
     iconContainer: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: 'rgba(79, 195, 247, 0.1)',
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: 'rgba(11, 246, 246, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: theme.spacing.md,
     },
     selectedIconContainer: {
-        backgroundColor: colors.primary,
+        backgroundColor: theme.colors.primary,
     },
     branchName: {
         fontSize: 18,
         fontFamily: 'Poppins_600SemiBold',
-        color: colors.textPrimary,
+        color: theme.colors.textPrimary,
         flex: 1,
     },
     selectedBranchName: {
-        color: colors.primaryDark,
+        color: theme.colors.primary,
+        fontFamily: 'Poppins_700Bold',
     },
     checkIcon: {
-        marginLeft: 10,
+        marginLeft: theme.spacing.sm,
     },
     footer: {
-        padding: 24,
+        padding: theme.spacing.xl,
         paddingBottom: 40,
-        backgroundColor: colors.background,
     },
     continueButton: {
-        backgroundColor: colors.primaryDark,
-        borderRadius: 16,
         height: 60,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
     },
     disabledButton: {
-        backgroundColor: colors.textSecondary,
-        opacity: 0.5,
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.borderSoft,
+        borderWidth: 1,
         shadowOpacity: 0,
         elevation: 0,
     },
-    continueButtonText: {
-        color: colors.card,
-        fontSize: 18,
-        fontFamily: 'Nunito_800ExtraBold',
+    disabledButtonText: {
+        color: theme.colors.textSecondary,
     }
 });
+
