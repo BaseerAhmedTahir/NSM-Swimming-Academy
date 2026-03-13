@@ -173,12 +173,12 @@ const styles = StyleSheet.create({
     },
     tabContainer: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(45, 58, 72, 0.5)',
+        backgroundColor: 'rgba(13, 27, 42, 0.8)', // Darker for better contrast
         borderRadius: 20,
         padding: 4,
         marginBottom: theme.spacing.xl,
         borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
+        borderColor: 'rgba(11, 246, 246, 0.2)',
     },
     tab: {
         flex: 1,
@@ -187,9 +187,9 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     activeTab: {
-        backgroundColor: theme.colors.background,
-        borderColor: theme.colors.primary20,
-        borderWidth: 1,
+        backgroundColor: 'rgba(11, 246, 246, 0.15)',
+        borderColor: theme.colors.primary,
+        borderWidth: 1.5,
     },
     tabText: {
         fontFamily: 'Poppins_600SemiBold',
@@ -205,10 +205,10 @@ const styles = StyleSheet.create({
     phoneInputGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: theme.colors.surface,
+        backgroundColor: 'rgba(13, 27, 42, 0.6)', // Consistent with glass theme
         borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
+        borderColor: 'rgba(11, 246, 246, 0.2)',
         height: 56,
         paddingHorizontal: theme.spacing.lg,
     },

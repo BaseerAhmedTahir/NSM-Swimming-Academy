@@ -28,10 +28,10 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: theme.colors.surface,
+        backgroundColor: 'rgba(13, 27, 42, 0.6)', // Consistent glass look
         borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
+        borderColor: 'rgba(11, 246, 246, 0.2)',
         height: 56,
         paddingHorizontal: theme.spacing.lg,
     },

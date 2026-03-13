@@ -102,13 +102,16 @@ export default function ScheduleScreen() {
                                     key={date}
                                     style={[styles.dateCard, isSelected && styles.selectedDateCard]}
                                     onPress={() => setSelectedDate(date)}
+                                    activeOpacity={0.7}
                                 >
-                                    <Text style={[styles.dayName, isSelected && styles.selectedDateText]}>
-                                        {getDayName(date)}
-                                    </Text>
-                                    <Text style={[styles.dayNum, isSelected && styles.selectedDateText]}>
-                                        {getDayNum(date)}
-                                    </Text>
+                                    <View style={isSelected ? styles.selectedDateInner : null}>
+                                        <Text style={[styles.dayName, isSelected && styles.selectedDateText]}>
+                                            {getDayName(date)}
+                                        </Text>
+                                        <Text style={[styles.dayNum, isSelected && styles.selectedDateText]}>
+                                            {getDayNum(date)}
+                                        </Text>
+                                    </View>
                                 </TouchableOpacity>
                             )
                         })}
@@ -210,29 +213,30 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     dateCard: {
-        width: 54,
-        height: 72,
-        borderRadius: 15,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        width: 60,
+        height: 70,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
         alignItems: 'center',
         justifyContent: 'center',
+        marginRight: 10,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.08)',
     },
     selectedDateCard: {
-        backgroundColor: 'rgba(11, 246, 246, 0.12)',
+        backgroundColor: 'rgba(11, 246, 246, 0.15)',
         borderColor: theme.colors.primary,
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        borderWidth: 1.5,
+    },
+    selectedDateInner: {
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dayName: {
         fontFamily: 'Poppins_500Medium',
-        fontSize: 11,
-        color: theme.colors.textSecondary,
-        marginBottom: 4,
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.5)',
+        marginBottom: 2,
     },
     dayNum: {
         fontFamily: 'Nunito_800ExtraBold',
