@@ -1,10 +1,10 @@
 export const colors = {
   primary: '#0bf6f6', 
-  primaryDark: '#0bf6f6', 
+  primaryDark: '#08d9d9', 
   secondary: '#001e3f', 
   background: '#001e3f',
-  card: 'rgba(45, 58, 72, 0.8)',
-  inputBg: 'rgba(45, 58, 72, 0.6)',
+  card: 'rgba(0, 30, 63, 0.7)',
+  inputBg: 'rgba(255, 255, 255, 0.05)',
   textPrimary: '#FFFFFF',
   textSecondary: '#a0aab2',
   accent: '#0bf6f6',

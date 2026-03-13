@@ -34,17 +34,19 @@ export const theme = {
     surface: "#2d3a48",
     textPrimary: "#ffffff",
     textSecondary: "#a0aab2",
-    borderSoft: "rgba(255,255,255,0.18)",
-    primary20: "rgba(11,246,246,0.20)",
-    surface80: "rgba(45,58,72,0.80)",
-    error: "#f44336",
-    card: "rgba(255, 255, 255, 0.05)"
+    borderSoft: "rgba(11, 246, 246, 0.2)", // Subtle cyan border
+    primary20: "rgba(11, 246, 246, 0.20)",
+    surface80: "rgba(0, 30, 63, 0.70)", // Deeper blue for cards
+    error: "#ff5252",
+    success: "#4caf50",
+    warning: "#ffc107",
+    card: "rgba(11, 246, 246, 0.05)"
   },
   radius: {
-    sm: 16,
-    md: 20,
+    sm: 12,
+    md: 18,
     lg: 24,
-    xl: 28
+    xl: 32
   },
   spacing: {
     xs: 4,

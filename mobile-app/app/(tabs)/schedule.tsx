@@ -54,7 +54,7 @@ export default function ScheduleScreen() {
             // Only show mock classes if we pick the active mock date 1
             if (selectedDate === dates[1]) {
                 studentClasses.push({
-                    id: 'demo-1', branch: currentStudent.branch, coach: 'Coach Ahmed', time: currentStudent.schedule.time, status: 'Upcoming'
+                    id: 'demo-1', branch: currentStudent.branch, coach: 'Coach Tariq', time: currentStudent.schedule.time, status: 'Upcoming'
                 });
             }
         }
@@ -64,16 +64,15 @@ export default function ScheduleScreen() {
 
     const handleCancelClass = (cls) => {
         Alert.alert(
-            "Cancel Class",
-            `Are you sure you want to cancel your ${cls.time} class with ${cls.coach}?`,
+            "Cancel Booking",
+            `Are you sure you want to cancel your ${cls.time} booking with ${cls.coach}?`,
             [
                 { text: "No, Keep it", style: "cancel" },
                 { 
                     text: "Yes, Cancel", 
                     style: "destructive",
                     onPress: () => {
-                        // In a real app, this would call an API
-                        Alert.alert("Success", "Your class has been cancelled.");
+                        Alert.alert("Success", "Your booking has been cancelled.");
                     }
                 }
             ]
@@ -83,7 +82,7 @@ export default function ScheduleScreen() {
     const currentClasses = getStudentClasses();
 
     return (
-        <AppBackground>
+        <AppBackground style={styles.container}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>My Schedule</Text>
@@ -110,7 +109,6 @@ export default function ScheduleScreen() {
                                     <Text style={[styles.dayNum, isSelected && styles.selectedDateText]}>
                                         {getDayNum(date)}
                                     </Text>
-                                    {isSelected && <View style={styles.dateIndicator} />}
                                 </TouchableOpacity>
                             )
                         })}
@@ -122,39 +120,57 @@ export default function ScheduleScreen() {
                     {currentClasses.length > 0 ? (
                         <View style={styles.classesList}>
                             {currentClasses.map((cls, idx) => (
-                                <View key={cls.id || idx} style={styles.classCard}>
-                                    <View style={styles.timeLineContainer}>
-                                        <Text style={styles.timeText}>{cls.time}</Text>
-                                        <View style={styles.timelineDot} />
-                                        <View style={styles.timelineLine} />
-                                    </View>
-                                    <GlassCard style={styles.classContent} hasGlow={cls.status === 'Upcoming'}>
-                                        <View style={styles.classHeader}>
+                                <GlassCard key={idx} style={styles.classCard} hasGlow={true}>
+                                    <View style={styles.classTopRow}>
+                                        <View style={styles.classDateBox}>
+                                            <Text style={styles.classMonth}>FEB</Text>
+                                            <Text style={styles.classDay}>24</Text>
+                                        </View>
+                                        <View style={styles.classInfoMain}>
                                             <Text style={styles.classTitle}>{currentStudent.level} Swim Class</Text>
                                             <View style={styles.statusBadge}>
                                                 <Text style={styles.statusText}>{cls.status}</Text>
                                             </View>
+                                            <View style={styles.classDetRow}>
+                                                <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
+                                                <Text style={styles.classDetText}>{cls.time}</Text>
+                                            </View>
+                                            <View style={styles.classDetRow}>
+                                                <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
+                                                <Text style={styles.classDetText}>{cls.branch} Branch</Text>
+                                            </View>
                                         </View>
-                                        <View style={styles.classDetailRow}>
-                                            <Ionicons name="person-outline" size={16} color={theme.colors.primary} />
-                                            <Text style={styles.classDetailText}>{cls.coach}</Text>
+                                    </View>
+
+                                    <View style={styles.divider} />
+
+                                    <View style={styles.coachRow}>
+                                        <View style={styles.coachAvatar}>
+                                            <Ionicons name="person" size={28} color="rgba(255,255,255,0.2)" />
                                         </View>
-                                        <View style={styles.classDetailRow}>
-                                            <Ionicons name="location-outline" size={16} color={theme.colors.primary} />
-                                            <Text style={styles.classDetailText}>{cls.branch} Branch</Text>
+                                        <View style={styles.coachInfo}>
+                                            <Text style={styles.coachName}>{cls.coach}</Text>
+                                            <View style={styles.ratingRow}>
+                                                {[1, 2, 3, 4, 5].map(star => (
+                                                    <Ionicons 
+                                                        key={star} 
+                                                        name={star <= 4 ? "star" : "star-outline"} 
+                                                        size={14} 
+                                                        color={star <= 4 ? theme.colors.primary : "rgba(11,246,246,0.3)"} 
+                                                    />
+                                                ))}
+                                                <Text style={styles.ratingText}>(3.5 / 5)</Text>
+                                            </View>
                                         </View>
-                                        
-                                        {cls.status === 'Upcoming' && (
-                                            <TouchableOpacity 
-                                                style={styles.cancelBtn}
-                                                onPress={() => handleCancelClass(cls)}
-                                            >
-                                                <Ionicons name="close-circle-outline" size={18} color={theme.colors.error || '#f44336'} />
-                                                <Text style={styles.cancelBtnText}>Cancel Class</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </GlassCard>
-                                </View>
+                                    </View>
+
+                                    <TouchableOpacity 
+                                        style={styles.cancelBookingBtn}
+                                        onPress={() => handleCancelClass(cls)}
+                                    >
+                                        <Text style={styles.cancelBookingText}>Cancel Booking</Text>
+                                    </TouchableOpacity>
+                                </GlassCard>
                             ))}
                         </View>
                     ) : (
@@ -164,10 +180,6 @@ export default function ScheduleScreen() {
                             </View>
                             <Text style={styles.emptyTitle}>No Classes</Text>
                             <Text style={styles.emptySubtitle}>You don't have any classes scheduled for this day.</Text>
-
-                            <TouchableOpacity style={styles.bookBtn}>
-                                <Text style={styles.bookBtnText}>Request Makeup Class</Text>
-                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -183,38 +195,44 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: theme.spacing.xl,
+        paddingTop: 20,
     },
     headerTitle: {
-        fontSize: 32,
+        fontSize: 34,
         fontFamily: 'Nunito_900Black',
         color: theme.colors.textPrimary,
     },
     dateSelectorContainer: {
-        marginBottom: theme.spacing.lg,
+        marginBottom: 30,
     },
     dateSelectorScroll: {
         paddingHorizontal: theme.spacing.xl,
-        gap: theme.spacing.md,
+        gap: 12,
     },
     dateCard: {
-        width: 65,
-        height: 85,
-        borderRadius: theme.radius.md,
-        backgroundColor: 'rgba(45, 58, 72, 0.4)',
+        width: 60,
+        height: 80,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
     },
     selectedDateCard: {
-        backgroundColor: 'rgba(11, 246, 246, 0.15)',
+        backgroundColor: 'rgba(11, 246, 246, 0.12)',
         borderColor: theme.colors.primary,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 5,
     },
     dayName: {
         fontFamily: 'Poppins_500Medium',
-        fontSize: 13,
+        fontSize: 12,
         color: theme.colors.textSecondary,
-        marginBottom: 4,
+        marginBottom: 6,
     },
     dayNum: {
         fontFamily: 'Nunito_800ExtraBold',
@@ -224,96 +242,135 @@ const styles = StyleSheet.create({
     selectedDateText: {
         color: theme.colors.primary,
     },
-    dateIndicator: {
-        position: 'absolute',
-        bottom: -8,
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: theme.colors.primary,
-    },
     listContent: {
         paddingHorizontal: theme.spacing.xl,
-        paddingBottom: 100,
+        paddingBottom: 120,
         flexGrow: 1,
     },
     classesList: {
-        gap: theme.spacing.xl,
+        gap: 20,
     },
     classCard: {
+        padding: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    },
+    classTopRow: {
         flexDirection: 'row',
-    },
-    timeLineContainer: {
-        width: 75,
         alignItems: 'flex-start',
-        position: 'relative',
     },
-    timeText: {
+    classDateBox: {
+        backgroundColor: 'rgba(11, 246, 246, 0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(11, 246, 246, 0.2)',
+        borderRadius: 18,
+        padding: 12,
+        alignItems: 'center',
+        minWidth: 70,
+        marginRight: 16,
+    },
+    classMonth: {
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 15,
-        color: theme.colors.textPrimary,
-        marginTop: 16, // Align with card content top
+        fontSize: 12,
+        color: theme.colors.primary,
+        opacity: 0.8,
     },
-    timelineDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: theme.colors.primary,
-        position: 'absolute',
-        right: 15,
-        top: 20,
-        zIndex: 1,
-        borderWidth: 2,
-        borderColor: theme.colors.background,
+    classDay: {
+        fontFamily: 'Nunito_800ExtraBold',
+        fontSize: 26,
+        color: theme.colors.primary,
     },
-    timelineLine: {
-        width: 2,
-        backgroundColor: 'rgba(11, 246, 246, 0.3)',
-        position: 'absolute',
-        right: 21,
-        top: 20,
-        bottom: -30, // Connect to next card
-    },
-    classContent: {
+    classInfoMain: {
         flex: 1,
-        padding: theme.spacing.lg,
-    },
-    classHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: theme.spacing.md,
     },
     classTitle: {
         fontFamily: 'Nunito_800ExtraBold',
         fontSize: 20,
         color: theme.colors.textPrimary,
-        flex: 1,
-        marginRight: 10,
+        marginBottom: 5,
     },
     statusBadge: {
-        backgroundColor: 'rgba(11, 246, 246, 0.15)',
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgba(11, 246, 246, 0.1)',
         paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingVertical: 4,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: 'rgba(11, 246, 246, 0.3)',
+        borderColor: 'rgba(11, 246, 246, 0.2)',
+        marginBottom: 12,
     },
     statusText: {
         color: theme.colors.primary,
         fontFamily: 'Poppins_600SemiBold',
-        fontSize: 12,
+        fontSize: 11,
+        textTransform: 'uppercase',
     },
-    classDetailRow: {
+    classDetRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
     },
-    classDetailText: {
+    classDetText: {
         fontFamily: 'Poppins_400Regular',
-        fontSize: 15,
+        fontSize: 14,
         color: theme.colors.textSecondary,
-        marginLeft: 10,
+        marginLeft: 8,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        marginVertical: 16,
+    },
+    coachRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    coachAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    coachInfo: {
+        flex: 1,
+    },
+    coachName: {
+        fontFamily: 'Poppins_600SemiBold',
+        fontSize: 16,
+        color: theme.colors.textPrimary,
+        marginBottom: 2,
+    },
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+    },
+    ratingText: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        marginLeft: 5,
+    },
+    cancelBookingBtn: {
+        width: '100%',
+        paddingVertical: 14,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    },
+    cancelBookingText: {
+        fontFamily: 'Poppins_600SemiBold',
+        fontSize: 15,
+        color: 'rgba(255, 255, 255, 0.5)',
     },
     emptyStateContainer: {
         flex: 1,
@@ -322,15 +379,15 @@ const styles = StyleSheet.create({
         paddingVertical: 60,
     },
     emptyCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: 'rgba(11, 246, 246, 0.15)',
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        backgroundColor: 'rgba(11, 246, 246, 0.08)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: theme.spacing.xl,
+        marginBottom: 20,
         borderWidth: 1,
-        borderColor: 'rgba(11, 246, 246, 0.3)',
+        borderColor: 'rgba(11, 246, 246, 0.2)',
     },
     emptyTitle: {
         fontFamily: 'Nunito_800ExtraBold',
@@ -344,40 +401,6 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         textAlign: 'center',
         paddingHorizontal: 40,
-        lineHeight: 24,
-        marginBottom: 30,
-    },
-    bookBtn: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 28,
-        paddingVertical: 16,
-        borderRadius: theme.radius.md,
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 6,
-    },
-    bookBtnText: {
-        fontFamily: 'Poppins_700Bold',
-        fontSize: 16,
-        color: theme.colors.background,
-    },
-    cancelBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 20,
-        paddingVertical: 12,
-        borderRadius: theme.radius.sm,
-        backgroundColor: 'rgba(244, 67, 54, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(244, 67, 54, 0.3)',
-    },
-    cancelBtnText: {
-        fontFamily: 'Poppins_600SemiBold',
-        fontSize: 14,
-        color: theme.colors.error || '#f44336',
-        marginLeft: 8,
+        lineHeight: 22,
     }
 });

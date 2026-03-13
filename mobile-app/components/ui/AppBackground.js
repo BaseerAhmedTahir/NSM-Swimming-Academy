@@ -23,6 +23,6 @@ const styles = StyleSheet.create({
     },
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 30, 63, 0.4)', // subtle overlay to ensure contrast
+        backgroundColor: 'rgba(0, 15, 31, 0.5)', // Darker, deeper aquatic overlay
     }
 });

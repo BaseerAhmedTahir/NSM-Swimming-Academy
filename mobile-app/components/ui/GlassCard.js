@@ -16,19 +16,19 @@ export default function GlassCard({ children, style, hasGlow = false }) {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: theme.colors.surface80,
+        backgroundColor: 'rgba(255, 255, 255, 0.06)', // More glass-like transparency
         borderRadius: theme.radius.xl,
-        borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
+        borderWidth: 1.2,
+        borderColor: 'rgba(11, 246, 246, 0.15)', // Subtle cyan border highlight
         padding: theme.spacing.lg,
         overflow: 'hidden',
     },
     glow: {
-        borderColor: theme.colors.primary,
+        borderColor: 'rgba(11, 246, 246, 0.4)',
         shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
     }
 });
