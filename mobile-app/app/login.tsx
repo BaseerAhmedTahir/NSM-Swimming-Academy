@@ -1,150 +1,158 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as storage from '../lib/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../lib/api';
 import { theme } from '../constants/theme';
 import Logo from '../components/Logo';
 import AppBackground from '../components/ui/AppBackground';
-import GlassCard from '../components/ui/GlassCard';
-import PrimaryButton from '../components/ui/PrimaryButton';
-import AppInput from '../components/ui/AppInput';
 
 export default function LoginScreen() {
-    const [activeTab, setActiveTab] = useState('login'); // 'login' or 'register'
     const router = useRouter();
 
-    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+    // Form States
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleAuth = () => {
-        // Mock authentication: anywhere goes to branch selection
-        if (activeTab === 'register' && !acceptPrivacy) {
-            alert("Please accept the Privacy Policy to continue.");
-            return;
+    // Check for existing session on mount — if user is already logged in, skip to tabs
+    useEffect(() => {
+        const checkSession = async () => {
+            const token = await storage.getItem('userToken');
+            if (token) {
+                router.replace('/(tabs)');
+            }
+        };
+        checkSession();
+    }, []);
+
+    const handleLogin = async () => {
+        setIsLoading(true);
+        try {
+            const res = await api.post('/auth/student/login', {
+                emailOrPhone: email,
+                password
+            });
+
+            if (res.data.success) {
+                const { accessToken, refreshToken, user } = res.data.data;
+
+                // Save authentication tokens
+                await storage.setItem('userToken', accessToken);
+                if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+
+                // Save full user data
+                await storage.setItem('userData', JSON.stringify(user));
+
+                // Save the admin-assigned branch from login response.
+                // This ensures the app always shows the correct branch regardless
+                // of what was tapped on the branch-selection screen.
+                if (user?.branch) {
+                    await AsyncStorage.setItem('selectedBranchId', user.branch.id || user.branchId || '');
+                    await AsyncStorage.setItem('selectedBranchName', user.branch.name || '');
+                } else if (user?.branchId) {
+                    await AsyncStorage.setItem('selectedBranchId', user.branchId);
+                    await AsyncStorage.setItem('selectedBranchName', '');
+                }
+
+                router.replace('/(tabs)');
+            }
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Login failed. Please check your credentials.');
+        } finally {
+            setIsLoading(false);
         }
-        router.replace('/branch-selection');
     };
 
     return (
-        <AppBackground>
+        <AppBackground style={{ flex: 1 }}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    
-                    <View style={styles.headerContainer}>
-                        <Logo size={100} textVisible={false} />
+
+                    {/* Main Container: Dark, semi-transparent, rounded */}
+                    <View style={styles.mainContainer}>
+
+                        {/* Logo with 20% opacity glow */}
+                        <View style={styles.logoWrapper}>
+                            <Logo size={100} textVisible={false} />
+                        </View>
+
+                        {/* Heading */}
                         <Text style={styles.welcomeText}>Welcome to NSM</Text>
-                    </View>
 
-                    <GlassCard style={styles.cardContainer} hasGlow>
-                        {/* Tab Switcher */}
-                        <View style={styles.tabContainer}>
-                            <TouchableOpacity
-                                style={[styles.tab, activeTab === 'login' && styles.activeTab]}
-                                onPress={() => setActiveTab('login')}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={[styles.tabText, activeTab === 'login' && styles.activeTabText]}>Login</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.tab, activeTab === 'register' && styles.activeTab]}
-                                onPress={() => setActiveTab('register')}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={[styles.tabText, activeTab === 'register' && styles.activeTabText]}>Register</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {/* ─────────────────────────────────────────────────
+                         *  REGISTER TAB — COMMENTED OUT (will be re-enabled
+                         *  once the admin-register flow is deprecated)
+                         * ─────────────────────────────────────────────────
+                         *
+                         * <View style={styles.tabContainer}>
+                         *     <TouchableOpacity style={[styles.tab, styles.activeTab]} activeOpacity={0.8}>
+                         *         <Text style={styles.activeTabText}>Login</Text>
+                         *     </TouchableOpacity>
+                         *     <TouchableOpacity style={[styles.tab]} activeOpacity={0.8}>
+                         *         <Text style={styles.inactiveTabText}>Register</Text>
+                         *     </TouchableOpacity>
+                         * </View>
+                         *
+                         * ───────────────────────────────────────────────── */}
 
-                        {/* Form Content */}
+                        {/* Form Fields — Login Only */}
                         <View style={styles.formContainer}>
-                            {activeTab === 'register' && (
-                                <AppInput 
-                                    icon="person-outline" 
-                                    placeholder="Full Name" 
-                                />
-                            )}
 
-                            {activeTab === 'login' && (
-                                <View style={styles.phoneInputGroup}>
-                                    <View style={styles.iconContainer}>
-                                        <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
-                                    </View>
-                                    <Text style={styles.prefix}>+971</Text>
-                                    <TextInput
-                                        placeholder="Phone Number"
-                                        style={styles.phoneTextInput}
-                                        keyboardType="phone-pad"
-                                        placeholderTextColor={theme.colors.textSecondary}
-                                    />
-                                </View>
-                            )}
-
-                            {activeTab === 'register' && (
-                                <AppInput 
-                                    icon="mail-outline" 
-                                    placeholder="Email Address" 
+                            {/* Email Input */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons name="mail-outline" size={20} color="#0bf6f6" style={styles.icon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Email Address"
+                                    placeholderTextColor="#a0aab2"
                                     keyboardType="email-address"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
                                 />
-                            )}
+                            </View>
 
-                            {activeTab === 'register' && (
-                                <View style={styles.phoneInputGroup}>
-                                    <View style={styles.iconContainer}>
-                                        <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
-                                    </View>
-                                    <Text style={styles.prefix}>+971</Text>
-                                    <TextInput
-                                        placeholder="Phone Number"
-                                        style={styles.phoneTextInput}
-                                        keyboardType="phone-pad"
-                                        placeholderTextColor={theme.colors.textSecondary}
-                                    />
-                                </View>
-                            )}
-
-                            <AppInput 
-                                icon="lock-closed-outline" 
-                                placeholder="Password" 
-                                secureTextEntry
-                            />
-
-                            {activeTab === 'register' && (
-                                <AppInput 
-                                    icon="lock-closed-outline" 
-                                    placeholder="Confirm Password" 
+                            {/* Password Input */}
+                            <View style={styles.inputGroup}>
+                                <Ionicons name="lock-closed-outline" size={20} color="#0bf6f6" style={styles.icon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    placeholderTextColor="#a0aab2"
                                     secureTextEntry
+                                    value={password}
+                                    onChangeText={setPassword}
                                 />
-                            )}
+                            </View>
 
-                            {activeTab === 'register' && (
-                                <TouchableOpacity 
-                                    style={styles.checkboxContainer} 
-                                    onPress={() => setAcceptPrivacy(!acceptPrivacy)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
-                                        {acceptPrivacy && <Ionicons name="checkmark" size={14} color={theme.colors.background} />}
-                                    </View>
-                                    <Text style={styles.checkboxLabel}>
-                                        I agree to the <Text style={styles.privacyLink}>Privacy Policy</Text>
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
+                            {/* Forgot Password */}
+                            <TouchableOpacity>
+                                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                            </TouchableOpacity>
 
-                            {activeTab === 'login' && (
-                                <TouchableOpacity>
-                                    <Text style={styles.forgotPassword}>Forgot Password?</Text>
-                                </TouchableOpacity>
-                            )}
+                            {/* Primary Action Button */}
+                            <TouchableOpacity
+                                style={styles.loginButton}
+                                onPress={handleLogin}
+                                activeOpacity={0.9}
+                                disabled={isLoading}
+                            >
+                                <Text style={styles.loginButtonText}>{isLoading ? 'Logging in...' : 'Login'}</Text>
+                            </TouchableOpacity>
 
-                            <PrimaryButton 
-                                title={activeTab === 'login' ? 'Login' : 'Register'} 
-                                onPress={handleAuth} 
-                                style={styles.actionButton}
-                            />
+                            {/* Info note for students */}
+                            <Text style={styles.infoNote}>
+                                Your login credentials are sent to your registered email address by the academy.
+                            </Text>
                         </View>
-                    </GlassCard>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </AppBackground>
@@ -154,115 +162,96 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: theme.spacing.xl,
         justifyContent: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 40,
     },
-    headerContainer: {
+    mainContainer: {
+        backgroundColor: 'rgba(0, 15, 31, 0.05)',
+        borderRadius: 32,
+        paddingHorizontal: 20,
+        paddingVertical: 32,
         alignItems: 'center',
-        marginTop: 60,
-        marginBottom: theme.spacing.xl,
+        width: '100%',
+        alignSelf: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(11, 246, 246, 0.1)',
+    },
+    logoWrapper: {
+        marginBottom: 16,
+        borderRadius: 60,
+        backgroundColor: '#00152b',
+        shadowColor: '#0bf6f6',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 15,
+        elevation: 20,
     },
     welcomeText: {
-        fontSize: 26,
+        color: '#ffffff',
         fontFamily: 'Nunito_800ExtraBold',
-        color: theme.colors.textPrimary,
-        marginTop: theme.spacing.lg,
-    },
-    cardContainer: {
-        marginHorizontal: theme.spacing.lg,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(13, 27, 42, 0.8)', // Darker for better contrast
-        borderRadius: 20,
-        padding: 4,
-        marginBottom: theme.spacing.xl,
-        borderWidth: 1,
-        borderColor: 'rgba(11, 246, 246, 0.2)',
-    },
-    tab: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        borderRadius: 16,
-    },
-    activeTab: {
-        backgroundColor: 'rgba(11, 246, 246, 0.15)',
-        borderColor: theme.colors.primary,
-        borderWidth: 1.5,
-    },
-    tabText: {
-        fontFamily: 'Poppins_600SemiBold',
-        color: theme.colors.textSecondary,
-        fontSize: 15,
-    },
-    activeTabText: {
-        color: theme.colors.primary,
+        fontSize: 26,
+        marginBottom: 24,
+        textAlign: 'center',
     },
     formContainer: {
-        gap: theme.spacing.lg,
+        width: '100%',
     },
-    phoneInputGroup: {
+    inputGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(13, 27, 42, 0.6)', // Consistent with glass theme
-        borderRadius: theme.radius.md,
-        borderWidth: 1,
-        borderColor: 'rgba(11, 246, 246, 0.2)',
-        height: 56,
-        paddingHorizontal: theme.spacing.lg,
+        backgroundColor: 'rgba(45, 58, 72, 0.8)',
+        borderRadius: 10,
+        paddingHorizontal: 20,
+        height: 60,
+        width: '100%',
+        marginBottom: 16,
+        borderWidth: 1.5,
+        borderColor: '#a0aab2',
     },
-    iconContainer: {
-        marginRight: theme.spacing.md,
-    },
-    prefix: {
-        fontFamily: 'Poppins_500Medium',
-        color: theme.colors.primary,
-        marginRight: 8,
-        borderRightWidth: 1,
-        borderRightColor: theme.colors.borderSoft,
-        paddingRight: 8,
-    },
-    phoneTextInput: {
-        flex: 1,
-        fontFamily: 'Poppins_400Regular',
-        color: theme.colors.textPrimary,
-        fontSize: 16,
-    },
-    forgotPassword: {
-        textAlign: 'right',
-        color: theme.colors.textSecondary,
-        fontFamily: 'Poppins_500Medium',
-        fontSize: 14,
-    },
-    actionButton: {
-        marginTop: theme.spacing.sm,
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 4,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
+    icon: {
         marginRight: 10,
     },
-    checkboxChecked: {
-        backgroundColor: theme.colors.primary,
+    input: {
+        flex: 1,
+        color: '#ffffff',
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 16,
     },
-    checkboxLabel: {
+    forgotPasswordText: {
+        color: '#a0aab2',
         fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: theme.colors.textSecondary,
+        alignSelf: 'flex-end',
+        marginBottom: 24,
+        marginTop: 4,
     },
-    privacyLink: {
-        color: theme.colors.primary,
-        fontFamily: 'Poppins_600SemiBold',
+    loginButton: {
+        backgroundColor: '#0bf6f6',
+        borderRadius: 10,
+        height: 60,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#0bf6f6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 15,
+        elevation: 20,
+        marginTop: 8,
+    },
+    loginButtonText: {
+        color: '#000000',
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 18,
+    },
+    infoNote: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 12,
+        color: '#a0aab2',
+        textAlign: 'center',
+        marginTop: 20,
+        lineHeight: 18,
+        paddingHorizontal: 10,
     },
 });

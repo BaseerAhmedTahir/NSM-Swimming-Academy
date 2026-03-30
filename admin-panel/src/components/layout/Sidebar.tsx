@@ -19,14 +19,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
     { title: "Dashboard", href: "/dashboard", icon: Home },
     { title: "Schedule", href: "/schedule", icon: CalendarDays },
-    { title: "Registration", href: "/students", icon: Users },
-    { title: "Expired Packages", href: "/students/expired", icon: HistoryIcon },
-    { title: "Frozen Students", href: "/students/frozen", icon: Waves }, // Added
-    { title: "Cancelled Students", href: "/students/cancelled", icon: UserMinus }, // Added
+    { title: "Registration", href: "/registration", icon: Users },
+    { title: "Expired Packages", href: "/registration/expired", icon: HistoryIcon },
+    { title: "Frozen Students", href: "/registration/frozen", icon: Waves }, 
+    { title: "Cancelled Students", href: "/registration/cancelled", icon: UserMinus }, 
     { title: "Coaches", href: "/coaches", icon: UserSquare2 },
     { title: "Payments", href: "/payments", icon: CreditCard },
     { title: "Notifications", href: "/notifications", icon: BellRing },
@@ -36,6 +37,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
+    const { user } = useAuth();
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(true); // Default to collapsed initially to be mobile friendly
 
@@ -84,6 +86,24 @@ export function Sidebar() {
                 {/* Navigation Links */}
                 <div className="flex-1 py-6 px-3 space-y-2 overflow-y-auto overflow-x-hidden scrollbar-thin">
                     {navItems.map((item) => {
+                        let hasAccess = true;
+                        
+                        if (user?.role === 'STAFF') {
+                            const rawPermissions = user?.branch?.permissions || "[]";
+                            let parsedPermissions: string[] = [];
+                            try {
+                                parsedPermissions = typeof rawPermissions === 'string' ? JSON.parse(rawPermissions) : rawPermissions;
+                            } catch (e) {
+                                parsedPermissions = ["dashboard", "schedule", "registration", "payments", "reminders"];
+                            }
+                            
+                            const routeKey = item.href.split('/')[1] || "dashboard";
+                            // Completely block unlisted routes from rendering
+                            hasAccess = parsedPermissions.includes(routeKey);
+                        }
+
+                        if (!hasAccess) return null;
+
                         const isActive = pathname.startsWith(item.href);
 
                         return (
@@ -127,17 +147,17 @@ export function Sidebar() {
                 <div className="p-4 border-t border-border/50 bg-muted/30">
                     {collapsed ? (
                         <div className="w-10 h-10 mx-auto bg-card border border-border rounded-lg flex items-center justify-center group relative">
-                            <span className="text-xs font-bold text-primaryDark">DXB</span>
+                            <span className="text-xs font-bold text-primaryDark">{user?.branch?.name?.substring(0, 3)?.toUpperCase() || 'HQ'}</span>
                             <div className="absolute left-12 bottom-0 bg-popover text-popover-foreground px-2 py-1 rounded-md text-sm font-semibold opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-md z-50">
-                                Dubai
+                                {user?.role === 'SUPER_ADMIN' ? 'Global Admin' : user?.branch?.name || 'Local Admin'}
                             </div>
                         </div>
                     ) : (
                         <div className="bg-card border border-border rounded-xl p-3 flex flex-col items-start shadow-sm">
-                            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Current Branch</span>
+                            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">Current Session</span>
                             <div className="flex items-center w-full">
                                 <div className="w-2 h-2 rounded-full bg-success mr-2 animate-pulse" />
-                                <span className="text-sm font-bold text-foreground truncate">Dubai</span>
+                                <span className="text-sm font-bold text-foreground truncate">{user?.role === 'SUPER_ADMIN' ? 'Global Admin' : user?.branch?.name || 'Local Admin'}</span>
                             </div>
                         </div>
                     )}

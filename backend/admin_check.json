@@ -1,0 +1,39 @@
+{
+  "admin1": {
+    "username": "admin1",
+    "role": "STAFF",
+    "branchId": "3ddc258a-2393-4165-8a7f-5e4efb8c98f3"
+  },
+  "all": [
+    {
+      "username": "admin3",
+      "role": "STAFF",
+      "branchId": "faf2b82b-51fe-45c9-8221-f10f605f9438"
+    },
+    {
+      "username": "admin4",
+      "role": "STAFF",
+      "branchId": "3ddc258a-2393-4165-8a7f-5e4efb8c98f3"
+    },
+    {
+      "username": "admin5",
+      "role": "STAFF",
+      "branchId": "7f8cf2e8-818f-4abf-90fb-46b954c36e9d"
+    },
+    {
+      "username": "admin2",
+      "role": "STAFF",
+      "branchId": "7f8cf2e8-818f-4abf-90fb-46b954c36e9d"
+    },
+    {
+      "username": "admin0",
+      "role": "SUPER_ADMIN",
+      "branchId": "faf2b82b-51fe-45c9-8221-f10f605f9438"
+    },
+    {
+      "username": "admin1",
+      "role": "STAFF",
+      "branchId": "3ddc258a-2393-4165-8a7f-5e4efb8c98f3"
+    }
+  ]
+}

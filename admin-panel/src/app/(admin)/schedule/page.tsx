@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Waves, Activity } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Waves, Activity, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -14,14 +14,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Mock Data Source
-// Mock Data Source
-import { scheduleData, students, expiredPackages } from "@/lib/mockData";
+import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SchedulePage() {
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date("2026-02-23")); // Set to a date with known mock data
-    const [selectedBranch, setSelectedBranch] = useState("Dubai");
-    const [dateStr, setDateStr] = useState("2026-02-23");
+    const { user } = useAuth();
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [dateStr, setDateStr] = useState(format(new Date(), "yyyy-MM-dd"));
+
+    const [dynamicTimeSlots, setDynamicTimeSlots] = useState<string[]>(["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM"]);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await api.get('/settings');
+            if (res.data.success) {
+                const slotsSetting = res.data.data.find((s:any) => s.key === 'TIME_SLOTS');
+                if (slotsSetting) {
+                    const parsed = JSON.parse(slotsSetting.value);
+                    const activeTimes = parsed.filter((s:any) => s.active).map((s:any) => s.time);
+                    if (activeTimes.length > 0) {
+                        setDynamicTimeSlots(activeTimes);
+                    }
+                }
+            }
+        } catch(e) { console.error("Failed to fetch slots settings", e); }
+    };
+
+    const [selectedBranch, setSelectedBranch] = useState("");
+    const [branches, setBranches] = useState<any[]>([]);
+    const [allStudents, setAllStudents] = useState<any[]>([]);
+
+    useEffect(() => {
+        api.get('/branches').then(res => {
+            const data = res.data.data.results || res.data.data;
+            if (data && data.length > 0) {
+                setBranches(data);
+                setSelectedBranch(user?.role === 'STAFF' && user?.branchId ? user.branchId : data[0].id);
+            }
+        }).catch(console.error);
+
+        api.get('/students?limit=1000').then(res => {
+            setAllStudents(res.data.data.results || res.data.data || []);
+        }).catch(console.error);
+    }, []);
 
     // UI State 
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -29,21 +64,69 @@ export default function SchedulePage() {
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
+    const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [freezeComment, setFreezeComment] = useState("");
+    const [selectedSlotData, setSelectedSlotData] = useState<any>(null);
+    const [studentToAdd, setStudentToAdd] = useState("");
+    const [coachesList, setCoachesList] = useState<any[]>([]);
+    const [membershipHistory, setMembershipHistory] = useState<any[]>([]);
     const [studentStatusMap, setStudentStatusMap] = useState<Record<string, string>>({}); // id -> status
 
-    // Get data for selected date and branch
-    const getBranchSchedule = () => {
-        const formatted = format(selectedDate, "yyyy-MM-dd");
-        const dayData = (scheduleData as Record<string, any>)[formatted];
-        if (dayData && dayData[selectedBranch]) {
-            return dayData[selectedBranch].coaches;
+    const [scheduleMap, setScheduleMap] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchSchedule = async (date: string) => {
+        if (!selectedBranch) return;
+        setIsLoading(true);
+        try {
+            const res = await api.get('/schedules/grid', { params: { date, branchId: selectedBranch }});
+            if (res.data?.data) {
+                const { coaches, schedules } = res.data.data;
+                setCoachesList(coaches);
+                const newMap: any = {};
+                coaches.forEach((c: any) => newMap[c.name] = {});
+                schedules.forEach((sch: any) => {
+                    const coachName = coaches.find((c: any) => c.id === sch.coachId)?.name;
+                    if (!coachName) return;
+                    sch.slots.forEach((slot: any) => {
+                        if (!newMap[coachName][slot.timeSlot]) {
+                            newMap[coachName][slot.timeSlot] = [];
+                        }
+                        if (slot.student) {
+                           newMap[coachName][slot.timeSlot].push({
+                               studentId: slot.student.id,
+                               slotId: slot.id,
+                               name: slot.student.name,
+                               level: slot.student.level,
+                               attendanceId: slot.attendanceRecord?.id,
+                               status: slot.attendanceRecord ? slot.attendanceRecord.status : 'Pending'
+                           });
+                        }
+                    });
+                });
+                setScheduleMap(newMap);
+            }
+        } catch (err) {
+            console.error(err);
+            setScheduleMap({});
+        } finally {
+            setIsLoading(false);
         }
-        return null;
     };
 
-    const currentSchedule = getBranchSchedule();
-    const timeSlots = ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM"];
+    useEffect(() => {
+        if (selectedBranch) {
+            fetchSchedule(dateStr);
+        }
+    }, [dateStr, selectedBranch]);
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const currentSchedule = scheduleMap;
+    const timeSlots = dynamicTimeSlots;
 
     // Handle Date Navigation
     const handlePrevDay = () => {
@@ -64,21 +147,87 @@ export default function SchedulePage() {
     };
 
     // Cell Interaction Handlers
-    const handleMarkAttendance = (id: string, status: string) => {
-        setStudentStatusMap(prev => ({ ...prev, [id]: status }));
-        toast.success(`Marked as ${status}`);
+    const handleMarkAttendance = async (studentData: any, statusStr: string) => {
+        const uppercaseStatus = statusStr.toUpperCase();
+        try {
+            if (studentData.attendanceId) {
+                await api.put(`/attendance/${studentData.attendanceId}?branchId=${selectedBranch}`, {
+                    status: uppercaseStatus,
+                    comment: "Updated from grid"
+                });
+            } else {
+                await api.post(`/attendance?branchId=${selectedBranch}`, {
+                    scheduleSlotId: studentData.slotId,
+                    studentId: studentData.studentId,
+                    date: dateStr,
+                    status: uppercaseStatus,
+                    comment: "Marked from grid"
+                });
+            }
+            toast.success(`Marked as ${statusStr}`);
+            fetchSchedule(dateStr);
+        } catch (err: any) {
+            console.error("Failed to mark attendance", err);
+            toast.error(err.response?.data?.message || "Failed to mark attendance.");
+        }
     };
 
-    const handleOpenStudentDetails = (studentStr: string) => {
-        // Parse mock string "NameAgeLevel"
-        // For prototype just finding a random student to show detail modal format
-        const mockStudent = students.find(s => s.branch === selectedBranch) || students[0];
-        setSelectedStudent({ ...mockStudent, displayName: studentStr });
-        setIsDetailModalOpen(true);
+    const handleOpenStudentDetails = async (studentData: any) => {
+        try {
+            const res = await api.get(`/students/${studentData.studentId}`);
+            if (res.data.success) {
+                const s = res.data.data;
+                const latestPayment = s.payments?.[0];
+                const mapped = {
+                    id: s.studentId,
+                    name: s.name,
+                    displayName: s.name,
+                    phone: s.phone,
+                    email: s.email,
+                    level: s.level,
+                    branch: s.branch?.name,
+                    membership: s.packageType,
+                    attendance: {
+                        startDate: s.membershipStartDate ? new Date(s.membershipStartDate).toLocaleDateString() : "N/A",
+                        expiryDate: s.membershipExpiryDate ? new Date(s.membershipExpiryDate).toLocaleDateString() : "N/A",
+                        attended: 0,
+                        totalClasses: 8
+                    },
+                    fee: {
+                        status: latestPayment?.status === 'PAID' ? 'Paid' : 'Pending',
+                        amount: latestPayment?.totalAmount || 0
+                    }
+                };
+
+                // Fetch real attendance count and history
+                const [attRes, histRes] = await Promise.all([
+                    api.get(`/students/${s.id}/attendance`),
+                    api.get(`/students/${s.id}/membership-history`)
+                ]);
+
+                if (attRes.data.success) {
+                    mapped.attendance.attended = attRes.data.data.filter((r: any) => r.status === 'ATTENDED').length;
+                }
+                
+                if (histRes.data.success) {
+                    setMembershipHistory(histRes.data.data);
+                    const activeHist = histRes.data.data.find((h: any) => h.status === 'ACTIVE');
+                    if (activeHist) {
+                        mapped.attendance.totalClasses = activeHist.totalClasses;
+                    }
+                }
+
+                setSelectedStudent(mapped);
+                setIsDetailModalOpen(true);
+            }
+        } catch (err) {
+            console.error("Failed to fetch student details", err);
+            toast.error("Could not load student profile");
+        }
     };
 
-    const handleOpenNotify = (studentStr: string) => {
-        setSelectedStudent({ displayName: studentStr });
+    const handleOpenNotify = (studentData: any) => {
+        setSelectedStudent({ displayName: studentData.name, id: studentData.studentId });
         setIsNotifyModalOpen(true);
     };
 
@@ -87,7 +236,7 @@ export default function SchedulePage() {
     };
 
     // Determine relative day context
-    const today = new Date("2026-02-23"); // Mock today to match data
+    const today = new Date();
     const isPast = selectedDate < subDays(today, 1);
     const isFuture = selectedDate > today;
 
@@ -128,16 +277,18 @@ export default function SchedulePage() {
 
                 {/* Global Controls */}
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                        <SelectTrigger className="w-full sm:w-[180px] h-10 border-border/50 bg-white/50 dark:bg-slate-800/50 font-semibold text-slate-900 dark:text-white hover:bg-white focus:ring-1 focus:ring-primary">
-                            <SelectValue placeholder="Branch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Dubai">Dubai</SelectItem>
-                            <SelectItem value="Sharjah">Sharjah</SelectItem>
-                            <SelectItem value="Abu Dhabi">Abu Dhabi</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {user?.role === 'SUPER_ADMIN' && (
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                            <SelectTrigger className="w-full sm:w-[180px] h-10 border-border/50 bg-white/50 dark:bg-slate-800/50 font-semibold text-slate-900 dark:text-white hover:bg-white focus:ring-1 focus:ring-primary">
+                                <SelectValue placeholder="Branch" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
 
                     <Button variant="default" onClick={handleSaveSchedule} className="h-10 font-bold bg-secondary hover:bg-secondary/90 shadow-sm shadow-secondary/20">
                         Save Changes
@@ -166,8 +317,11 @@ export default function SchedulePage() {
             {/* Main Schedule Grid Container */}
             <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto custom-scrollbar">
-
-                    {currentSchedule ? (
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center p-20 text-center">
+                            <p className="font-bold text-muted-foreground">Loading schedule...</p>
+                        </div>
+                    ) : currentSchedule ? (
                         <div className="min-w-[1000px] w-full border-collapse pb-6">
 
                             {/* Header Row - Coaches */}
@@ -175,13 +329,19 @@ export default function SchedulePage() {
                                 <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-black text-foreground bg-card sticky left-0 z-20">
                                     Time
                                 </div>
-                                {Object.keys(currentSchedule).map(coach => (
-                                    <div key={coach} className="flex-1 min-w-[200px] py-4 px-4 font-bold text-center border-r border-border/50 last:border-0 relative hover:bg-muted/30 transition-colors cursor-pointer group">
-                                        <h3 className="text-primaryDark">{coach}</h3>
-                                        <p className="text-xs text-muted-foreground font-medium mt-1">6 Slots / {isPast ? '6 Attended' : '6 Booked'}</p>
-                                        <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-                                    </div>
-                                ))}
+                                {Object.keys(currentSchedule).map(coach => {
+                                    const coachSlots = Object.values(currentSchedule[coach]).flat() as any[];
+                                    const bookedCount = coachSlots.filter(Boolean).length;
+                                    const attendedCount = coachSlots.filter(s => s?.status === 'Attended' || s?.status === 'ATTENDED').length;
+                                    
+                                    return (
+                                        <div key={coach} className="flex-1 min-w-[200px] py-4 px-4 font-bold text-center border-r border-border/50 last:border-0 relative hover:bg-muted/30 transition-colors cursor-pointer group">
+                                            <h3 className="text-primaryDark">{coach}</h3>
+                                            <p className="text-xs text-muted-foreground font-medium mt-1">{isPast ? `${attendedCount} Students Attended` : `${bookedCount} Students Booked`}</p>
+                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Data Rows - Times */}
@@ -202,9 +362,15 @@ export default function SchedulePage() {
                                                 <div key={`${time}-${coach}`} className="flex-1 min-w-[200px] py-2 px-2 border-r border-border/50 last:border-0 flex flex-col gap-1.5 h-full">
 
                                                     {/* Student Pills */}
-                                                    {studentsInSlot.map((studentStr: string, idx: number) => {
-                                                        const cellId = `${dateStr}-${time}-${coach}-${idx}`;
-                                                        const status = studentStatusMap[cellId] || 'Pending';
+                                                    {studentsInSlot.map((studentData: any, idx: number) => {
+                                                        const cellId = studentData.slotId || `${dateStr}-${time}-${coach}-${idx}`;
+                                                        
+                                                        let displayStatus = 'Pending';
+                                                        if (studentData.status === 'ATTENDED') displayStatus = 'Attended';
+                                                        else if (studentData.status === 'ABSENT') displayStatus = 'Absent';
+                                                        else if (studentData.status === 'INFORMED') displayStatus = 'Informed';
+
+                                                        const status = displayStatus;
 
                                                         return (
                                                             <Popover key={cellId}>
@@ -219,38 +385,60 @@ export default function SchedulePage() {
                                                                         )}
                                                                         disabled={isPast && status === 'Pending'}
                                                                     >
-                                                                        <div className="truncate pr-2">{studentStr.match(/[a-zA-Z]+/)?.[0] || studentStr}</div>
+                                                                        <div className="truncate pr-2">{studentData.name || "Student"}</div>
                                                                         <div className="text-[10px] font-black opacity-60 bg-black/5 px-1.5 py-0.5 rounded shrink-0">
-                                                                            {studentStr.match(/[A-Z0-9]+$/)?.[0]}
+                                                                            {studentData.level || "LVL"}
                                                                         </div>
                                                                     </button>
                                                                 </PopoverTrigger>
                                                                 <PopoverContent className="w-56 p-2 rounded-xl shadow-xl flex flex-col gap-1" align="start">
                                                                     {/* Attendance Actions */}
                                                                     <div className="text-xs font-bold text-muted-foreground uppercase px-2 py-1 tracking-wider">Attendance</div>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-success/10 hover:text-success" onClick={() => handleMarkAttendance(cellId, 'Attended')}>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-success/10 hover:text-success" onClick={() => handleMarkAttendance(studentData, 'Attended')}>
                                                                         <Check className="mr-2 h-4 w-4" /> Mark Attended
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-error/10 hover:text-error" onClick={() => handleMarkAttendance(cellId, 'Absent')}>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-error/10 hover:text-error" onClick={() => handleMarkAttendance(studentData, 'Absent')}>
                                                                         <X className="mr-2 h-4 w-4" /> Mark Absent
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-primary/10 hover:text-primaryDark" onClick={() => handleMarkAttendance(cellId, 'Informed')}>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold hover:bg-primary/10 hover:text-primaryDark" onClick={() => handleMarkAttendance(studentData, 'Informed')}>
                                                                         <Info className="mr-2 h-4 w-4" /> Informed Absence
                                                                     </Button>
 
                                                                     <div className="h-px bg-border my-1" />
                                                                     {/* Other Actions */}
                                                                     <div className="text-xs font-bold text-muted-foreground uppercase px-2 py-1 tracking-wider mt-1">Manage</div>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenStudentDetails(studentStr)}>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenStudentDetails(studentData)}>
                                                                         <UserMinus className="mr-2 h-4 w-4" /> View Profile
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setIsFreezeModalOpen(true)}>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        className="justify-start h-8 font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                                                                        onClick={() => {
+                                                                            setSelectedStudent(studentData);
+                                                                            setIsFreezeModalOpen(true);
+                                                                        }}
+                                                                    >
                                                                         <Waves className="mr-2 h-4 w-4" /> Freeze Student
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenNotify(studentStr)}>
+                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-foreground" onClick={() => handleOpenNotify(studentData)}>
                                                                         <MessageSquare className="mr-2 h-4 w-4" /> Send Message
                                                                     </Button>
-                                                                    <Button variant="ghost" className="justify-start h-8 font-semibold text-error hover:text-error hover:bg-error/10 mt-1">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        className="justify-start h-8 font-semibold text-error hover:text-error hover:bg-error/10 mt-1"
+                                                                        onClick={() => {
+                                                                            const coachObj = coachesList.find(c => c.name === coach);
+                                                                            setSelectedSlotData({
+                                                                                coachId: coachObj?.id,
+                                                                                coachName: coach,
+                                                                                timeSlot: time,
+                                                                                slotPosition: studentsInSlot.indexOf(studentData) + 1,
+                                                                                studentName: studentData.name,
+                                                                                studentId: studentData.studentId
+                                                                            });
+                                                                            setIsRemoveModalOpen(true);
+                                                                        }}
+                                                                    >
                                                                         <X className="mr-2 h-4 w-4" /> Remove Slot
                                                                     </Button>
                                                                 </PopoverContent>
@@ -262,7 +450,15 @@ export default function SchedulePage() {
                                                     {studentsInSlot.length < 6 && !isPast && (
                                                         <button
                                                             className="w-full h-9 flex items-center justify-center border border-dashed border-primary/30 rounded-lg text-primary/60 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors mt-1"
-                                                            onClick={() => setIsAddModalOpen(true)}
+                                                            onClick={() => {
+                                                                const coachObj = coachesList.find(c => c.name === coach);
+                                                                setSelectedSlotData({ 
+                                                                    coachId: coachObj?.id, 
+                                                                    time,
+                                                                    slotPosition: studentsInSlot.length + 1
+                                                                });
+                                                                setIsAddModalOpen(true);
+                                                            }}
                                                         >
                                                             <Plus className="w-4 h-4" />
                                                         </button>
@@ -282,10 +478,7 @@ export default function SchedulePage() {
                                 <CalendarIcon className="w-10 h-10 text-muted-foreground" />
                             </div>
                             <h3 className="text-xl font-bold text-foreground mb-2">No Schedule Data</h3>
-                            <p className="text-muted-foreground max-w-md">There is no class data generated for this specific date and branch combination in the mock dataset. Try February 23rd or 24th, 2026.</p>
-                            <Button variant="outline" className="mt-6" onClick={() => { setSelectedDate(new Date("2026-02-23")); setDateStr("2026-02-23"); }}>
-                                Load Sample Data
-                            </Button>
+                            <p className="text-muted-foreground max-w-md">There is no class data recorded for this specific date and branch combination yet.</p>
                         </div>
                     )}
                 </div>
@@ -361,16 +554,21 @@ export default function SchedulePage() {
                                         Package History
                                     </h4>
                                     <div className="space-y-3">
-                                        {expiredPackages.filter(p => p.studentId === selectedStudent.id).length > 0 ? (
-                                            expiredPackages.filter(p => p.studentId === selectedStudent.id).map((pkg, idx) => (
+                                        {membershipHistory.length > 0 ? (
+                                            membershipHistory.map((pkg, idx) => (
                                                 <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex items-center justify-between">
                                                     <div>
-                                                        <p className="font-bold text-[#0B213F] text-sm">{pkg.packageName}</p>
-                                                        <p className="text-[10px] font-bold text-slate-500">Expired on {pkg.expiryDate}</p>
+                                                        <p className="font-bold text-[#0B213F] text-sm">{pkg.packageType} Package</p>
+                                                        <p className="text-[10px] font-bold text-slate-500">
+                                                            Started: {new Date(pkg.startDate).toLocaleDateString()}
+                                                        </p>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
-                                                        <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Expired</span>
+                                                        <span className={cn(
+                                                            "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
+                                                            pkg.status === 'ACTIVE' ? "bg-success/10 text-success" : "bg-slate-100 text-slate-500"
+                                                        )}>{pkg.status}</span>
                                                     </div>
                                                 </div>
                                             ))
@@ -387,118 +585,282 @@ export default function SchedulePage() {
 
             {/* 4.5.7 Notification Modal */}
             <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Send Message</DialogTitle>
-                        <DialogDescription>
-                            Send a notification to {selectedStudent?.displayName} via the NSM Portal.
+                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl bg-card rounded-[2rem]">
+                    <div className="bg-[#1C5CAA] p-8 flex flex-col items-center text-center text-white relative">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <MessageSquare className="w-24 h-24" />
+                        </div>
+                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/30 shadow-lg">
+                            <MessageSquare className="w-8 h-8 text-white" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black">Send Message</DialogTitle>
+                        <DialogDescription className="text-blue-100 font-bold mt-1">
+                            Notify {selectedStudent?.displayName} via the NSM Portal
                         </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    </div>
+
+                    <div className="p-8 space-y-4">
                         <div className="space-y-2">
-                            <Label>Message Template</Label>
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Template</Label>
                             <Select defaultValue="absence">
-                                <SelectTrigger>
+                                <SelectTrigger className="h-12 rounded-2xl border-border/50 bg-muted/30 focus:bg-background transition-all font-bold">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="absence">Absence Follow Up</SelectItem>
-                                    <SelectItem value="fee">Fee Reminder</SelectItem>
-                                    <SelectItem value="custom">Custom Message</SelectItem>
+                                <SelectContent className="rounded-2xl border-border/50 shadow-xl">
+                                    <SelectItem value="absence" className="rounded-xl my-1 mx-1">Absence Follow Up</SelectItem>
+                                    <SelectItem value="fee" className="rounded-xl my-1 mx-1">Fee Reminder</SelectItem>
+                                    <SelectItem value="custom" className="rounded-xl my-1 mx-1">Custom Message</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Message Content</Label>
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Message Content</Label>
                             <Textarea
-                                className="h-32 resize-none"
+                                className="min-h-[120px] resize-none rounded-2xl border-border/50 bg-muted/30 focus:bg-background transition-all font-medium"
                                 defaultValue="Hi dear, how are you? We noticed you missed your swimming class today. Please let us know if you'd like to schedule a makeup session."
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsNotifyModalOpen(false)}>Cancel</Button>
-                        <Button onClick={() => { toast.success("Notification sent successfully"); setIsNotifyModalOpen(false); }} className="font-bold">
-                            Send Message
+
+                    <div className="px-8 pb-8 grid grid-cols-2 gap-3">
+                        <Button 
+                            variant="outline" 
+                            className="h-12 rounded-2xl font-bold border-border/50" 
+                            onClick={() => setIsNotifyModalOpen(false)}
+                        >
+                            Cancel
                         </Button>
-                    </DialogFooter>
+                        <Button 
+                            onClick={() => { toast.success("Notification sent successfully"); setIsNotifyModalOpen(false); }} 
+                            className="h-12 rounded-2xl font-black bg-[#1C5CAA] hover:bg-blue-800 shadow-lg shadow-blue-200"
+                        >
+                            Send Now
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* 4.5.4 Add Student to Slot Modal */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Add Student to Slot</DialogTitle>
-                        <DialogDescription>
-                            Select a student to fill this time slot.
+                <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-none shadow-2xl bg-card rounded-[2rem]">
+                    <div className="bg-primary p-8 flex flex-col items-center text-center text-white relative">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Plus className="w-24 h-24" />
+                        </div>
+                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/30 shadow-lg">
+                            <UserPlus className="w-8 h-8 text-white" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black">Add Student</DialogTitle>
+                        <DialogDescription className="text-blue-100 font-bold mt-1">
+                            Assign a student to the {selectedSlotData?.time} slot
                         </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    </div>
+
+                    <div className="p-8">
                         <div className="space-y-2">
-                            <Label>Search Student (Mock)</Label>
-                            <Select defaultValue="ziad">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select student..." />
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Select Student</Label>
+                            <Select value={studentToAdd} onValueChange={setStudentToAdd}>
+                                <SelectTrigger className="h-12 rounded-2xl border-border/50 bg-muted/30 focus:bg-background transition-all font-bold">
+                                    <SelectValue placeholder="Search student name..." />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ziad">Ziad Ahmed (***4567) - K2</SelectItem>
-                                    <SelectItem value="sara">Sara Ali (***3575) - T1</SelectItem>
-                                    <SelectItem value="omar">Omar Hassan (***5026) - A1</SelectItem>
+                                <SelectContent className="max-h-[300px] rounded-2xl border-border/50 shadow-xl">
+                                    {allStudents
+                                        .filter(s => s.status === 'ACTIVE')
+                                        .filter(s => {
+                                            const isScheduledAtThisTime = Object.values(scheduleMap || {}).some((coachSlots: any) => {
+                                                const studentsInTime = coachSlots[selectedSlotData?.time] || [];
+                                                return studentsInTime.some((st: any) => st.studentId === s.id);
+                                            });
+                                            return !isScheduledAtThisTime;
+                                        })
+                                        .map(student => (
+                                            <SelectItem key={student.id} value={student.id} className="rounded-xl my-1 mx-1 focus:bg-primary/10">
+                                                {student.name} ({student.studentId})
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                        <Button onClick={() => { toast.success("Student added to slot"); setIsAddModalOpen(false); }} className="font-bold">
-                            Add to Schedule
+
+                    <div className="px-8 pb-8 grid grid-cols-2 gap-3">
+                        <Button 
+                            variant="outline" 
+                            className="h-12 rounded-2xl font-bold border-border/50" 
+                            onClick={() => setIsAddModalOpen(false)}
+                        >
+                            Cancel
                         </Button>
-                    </DialogFooter>
+                        <Button 
+                            disabled={!studentToAdd || isProcessing}
+                            onClick={async () => { 
+                                setIsProcessing(true);
+                                try {
+                                    await api.post(`/schedules/assign?branchId=${selectedBranch}`, {
+                                        date: dateStr,
+                                        coachId: selectedSlotData.coachId,
+                                        timeSlot: selectedSlotData.time,
+                                        slotPosition: selectedSlotData.slotPosition,
+                                        studentId: studentToAdd
+                                    });
+                                    toast.success("Student added to slot"); 
+                                    setIsAddModalOpen(false); 
+                                    setStudentToAdd("");
+                                    fetchSchedule(dateStr);
+                                } catch (err: any) {
+                                    toast.error(err.response?.data?.message || "Failed to assign student.");
+                                } finally {
+                                    setIsProcessing(false);
+                                }
+                            }} 
+                            className="h-12 rounded-2xl font-black bg-primary hover:bg-blue-800 shadow-lg shadow-blue-200"
+                        >
+                            {isProcessing ? "Adding..." : "Add to Slot"}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Freeze Student Modal */}
             <Dialog open={isFreezeModalOpen} onOpenChange={setIsFreezeModalOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Waves className="w-5 h-5 text-blue-600" />
-                            Freeze Membership
-                        </DialogTitle>
-                        <DialogDescription>
-                            Freeze {selectedStudent?.displayName}'s membership temporarily.
+                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none shadow-2xl bg-card rounded-[2rem]">
+                    <div className="bg-blue-600 p-8 flex flex-col items-center text-center text-white relative">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Waves className="w-24 h-24" />
+                        </div>
+                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/30 shadow-lg">
+                            <Waves className="w-8 h-8 text-white" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black">Freeze Membership</DialogTitle>
+                        <DialogDescription className="text-blue-100 font-bold mt-1">
+                            Temporarily pause {selectedStudent?.displayName || selectedStudent?.name}'s account
                         </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    </div>
+
+                    <div className="p-8 space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="resume-date">Expected Resume Date</Label>
-                            <Input id="resume-date" type="date" className="rounded-xl" defaultValue="2026-04-12" />
+                            <Label htmlFor="resume-date" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Expected Resume Date</Label>
+                            <Input 
+                                id="resume-date" 
+                                type="date" 
+                                className="h-12 rounded-2xl border-border/50 bg-muted/30 focus:bg-background transition-all font-bold" 
+                                defaultValue={new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]} 
+                            />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="comment">Reason / Comment</Label>
+                            <Label htmlFor="comment" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Reason / Comment</Label>
                             <Textarea
                                 id="comment"
                                 placeholder="e.g., Medical leave, traveling..."
-                                className="h-24 resize-none rounded-xl"
+                                className="min-h-[100px] resize-none rounded-2xl border-border/50 bg-muted/30 focus:bg-background transition-all font-medium"
                                 value={freezeComment}
                                 onChange={(e) => setFreezeComment(e.target.value)}
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsFreezeModalOpen(false)}>Cancel</Button>
+
+                    <div className="px-8 pb-8 grid grid-cols-2 gap-3">
                         <Button 
-                            onClick={() => { 
-                                toast.success("Membership frozen successfully. Student added to monthly freeze list."); 
-                                setIsFreezeModalOpen(false); 
-                                setFreezeComment("");
-                            }} 
-                            className="font-bold bg-blue-600 hover:bg-blue-700"
+                            variant="outline" 
+                            className="h-12 rounded-2xl font-bold border-border/50" 
+                            onClick={() => setIsFreezeModalOpen(false)}
                         >
-                            Confirm Freeze
+                            Cancel
                         </Button>
-                    </DialogFooter>
+                        <Button 
+                            disabled={isProcessing}
+                            onClick={async () => { 
+                                setIsProcessing(true);
+                                try {
+                                    const resumeDate = (document.getElementById('resume-date') as HTMLInputElement).value;
+                                    await api.post(`/freezings?branchId=${selectedBranch}`, {
+                                        studentId: selectedStudent.studentId,
+                                        freezeStartDate: new Date().toISOString().split('T')[0],
+                                        freezeEndDate: resumeDate, 
+                                        comment: freezeComment || "No reason provided",
+                                        duration: 1
+                                    });
+                                    toast.success("Membership frozen successfully."); 
+                                    setIsFreezeModalOpen(false); 
+                                    setFreezeComment("");
+                                    fetchSchedule(dateStr);
+                                } catch (err: any) {
+                                    console.error("Freeze error details:", err.response?.data || err.message || err);
+                                    const errorData = err.response?.data;
+                                    const errorMessage = errorData?.message || errorData?.error?.code || err.message || "Failed to freeze membership.";
+                                    toast.error(errorMessage);
+                                } finally {
+                                    setIsProcessing(false);
+                                }
+                            }} 
+                            className="h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+                        >
+                            {isProcessing ? "Pausing..." : "Confirm Freeze"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Remove Slot Confirmation Modal */}
+            <Dialog open={isRemoveModalOpen} onOpenChange={setIsRemoveModalOpen}>
+                <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-none shadow-2xl bg-card rounded-[2rem]">
+                    <div className="p-8 flex flex-col items-center text-center">
+                        <div className="w-20 h-20 rounded-3xl bg-error/10 flex items-center justify-center mb-6 rotate-3 hover:rotate-0 transition-transform duration-300">
+                            <X className="w-10 h-10 text-error" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black text-foreground mb-2">Remove Student?</DialogTitle>
+                        <DialogDescription className="text-muted-foreground font-medium text-balance">
+                            Are you sure you want to remove <strong className="text-foreground">{selectedSlotData?.studentName}</strong> from this session?
+                        </DialogDescription>
+                    </div>
+                    
+                    <div className="px-8 pb-2">
+                        <div className="bg-muted/30 p-5 rounded-2xl border border-border/50 space-y-2">
+                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                <span>Coach</span>
+                                <span className="text-foreground">{selectedSlotData?.coachName}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                <span>Session Time</span>
+                                <span className="text-primary">{selectedSlotData?.timeSlot}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 pt-6 grid grid-cols-2 gap-3">
+                        <Button 
+                            variant="outline" 
+                            className="h-12 rounded-2xl font-bold border-border/50 hover:bg-muted/50 transition-all" 
+                            onClick={() => setIsRemoveModalOpen(false)}
+                        >
+                            Keep Slot
+                        </Button>
+                        <Button 
+                            disabled={isProcessing}
+                            variant="destructive" 
+                            className="h-12 rounded-2xl font-black shadow-lg shadow-error/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            onClick={async () => {
+                                setIsProcessing(true);
+                                try {
+                                    await api.post(`/schedules/remove?branchId=${selectedBranch}`, {
+                                        date: dateStr,
+                                        coachId: selectedSlotData.coachId,
+                                        timeSlot: selectedSlotData.timeSlot,
+                                        slotPosition: selectedSlotData.slotPosition
+                                    });
+                                    toast.success("Student removed from slot");
+                                    setIsRemoveModalOpen(false);
+                                    fetchSchedule(dateStr);
+                                } catch (err: any) {
+                                    toast.error(err.response?.data?.message || "Failed to remove student.");
+                                } finally {
+                                    setIsProcessing(false);
+                                }
+                            }}
+                        >
+                            {isProcessing ? "Removing..." : "Remove Now"}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

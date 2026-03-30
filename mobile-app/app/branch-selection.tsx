@@ -1,40 +1,75 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import AppBackground from '../components/ui/AppBackground';
 import GlassCard from '../components/ui/GlassCard';
 import PrimaryButton from '../components/ui/PrimaryButton';
-
-const branches = [
-    { id: 'DXB', name: 'Dubai', icon: 'location' },
-    { id: 'SHJ', name: 'Sharjah', icon: 'location' },
-    { id: 'AUH', name: 'Abu Dhabi', icon: 'location' }
-];
+import api from '../lib/api';
 
 export default function BranchSelectionScreen() {
-    const [selectedBranch, setSelectedBranch] = useState(null);
+    const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const router = useRouter();
 
-    const handleContinue = () => {
-        if (selectedBranch) {
-            router.replace('/(tabs)');
+    const fetchBranches = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(false);
+            const res = await api.get('/branches');
+            const data = res.data.data?.results || res.data.data || [];
+            setBranches(data);
+        } catch (e) {
+            console.error('Failed to load branches', e);
+            setError(true);
+        } finally {
+            setLoading(false);
         }
+    }, []);
+
+    useEffect(() => {
+        fetchBranches();
+    }, [fetchBranches]);
+
+    // Branch selection here is purely informational — the actual branch assigned to
+    // the student is determined by the admin at registration time and returned during login.
+    const handleContinue = () => {
+        router.replace('/login');
     };
 
     return (
-        <AppBackground>
+        <AppBackground style={{ flex: 1 }}>
             <SafeAreaView style={styles.container}>
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                     <View style={styles.header}>
-                        <Text style={styles.title}>Select Branch</Text>
-                        <Text style={styles.subtitle}>Choose your primary swimming academy location</Text>
+                        <Text style={styles.title}>Our Branches</Text>
+                        <Text style={styles.subtitle}>NSM Swimming Academy operates across multiple locations. Your branch will be assigned when you log in.</Text>
                     </View>
 
                     <View style={styles.branchesContainer}>
-                        {branches.map(branch => {
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#0bf6f6" style={{ marginTop: 40 }} />
+                        ) : error ? (
+                            <View style={styles.errorContainer}>
+                                <Ionicons name="wifi-outline" size={48} color="rgba(255,82,82,0.7)" />
+                                <Text style={styles.errorTitle}>Could Not Load Branches</Text>
+                                <Text style={styles.errorSubtitle}>Check your connection and try again.</Text>
+                                <TouchableOpacity style={styles.retryBtn} onPress={fetchBranches}>
+                                    <Ionicons name="refresh" size={18} color="#0bf6f6" />
+                                    <Text style={styles.retryText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : branches.length === 0 ? (
+                            <View style={styles.errorContainer}>
+                                <Ionicons name="location-outline" size={48} color="rgba(255,255,255,0.2)" />
+                                <Text style={styles.errorTitle}>No Branches Found</Text>
+                                <Text style={styles.errorSubtitle}>Please contact your administrator.</Text>
+                            </View>
+                        ) : branches.map(branch => {
                             const isSelected = selectedBranch === branch.id;
                             return (
                                 <TouchableOpacity
@@ -42,7 +77,7 @@ export default function BranchSelectionScreen() {
                                     onPress={() => setSelectedBranch(branch.id)}
                                     activeOpacity={0.8}
                                 >
-                                    <GlassCard 
+                                    <GlassCard
                                         style={[
                                             styles.branchCard,
                                             isSelected && styles.selectedCard
@@ -54,7 +89,7 @@ export default function BranchSelectionScreen() {
                                             isSelected && styles.selectedIconContainer
                                         ]}>
                                             <Ionicons
-                                                name={branch.icon}
+                                                name="location"
                                                 size={28}
                                                 color={isSelected ? theme.colors.background : theme.colors.primary}
                                             />
@@ -81,11 +116,10 @@ export default function BranchSelectionScreen() {
                 </ScrollView>
 
                 <View style={styles.footer}>
-                    <PrimaryButton 
-                        title="Continue to Dashboard"
+                    <PrimaryButton
+                        title="Continue to Login"
                         onPress={handleContinue}
-                        style={[styles.continueButton, !selectedBranch && styles.disabledButton]}
-                        textStyle={!selectedBranch && styles.disabledButtonText}
+                        style={styles.continueButton}
                     />
                 </View>
             </SafeAreaView>
@@ -99,7 +133,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: theme.spacing.xl,
-        paddingTop: 80, // Extra padding for top
+        paddingTop: 80,
     },
     header: {
         marginBottom: 40,
@@ -125,8 +159,14 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     selectedCard: {
-        backgroundColor: 'rgba(11, 246, 246, 0.1)',
-        borderColor: theme.colors.primary,
+        backgroundColor: Platform.OS === 'android' ? '#00314b' : 'rgba(11, 246, 246, 0.08)',
+        borderColor: 'rgba(11, 246, 246, 0.8)',
+        borderWidth: 1.2,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
+        elevation: 15,
     },
     iconContainer: {
         width: 56,
@@ -169,6 +209,39 @@ const styles = StyleSheet.create({
     },
     disabledButtonText: {
         color: theme.colors.textSecondary,
-    }
+    },
+    errorContainer: {
+        alignItems: 'center',
+        paddingVertical: 40,
+        gap: 10,
+    },
+    errorTitle: {
+        fontFamily: 'Nunito_800ExtraBold',
+        fontSize: 18,
+        color: theme.colors.textPrimary,
+        textAlign: 'center',
+    },
+    errorSubtitle: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        textAlign: 'center',
+    },
+    retryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(11,246,246,0.3)',
+        backgroundColor: 'rgba(11,246,246,0.08)',
+    },
+    retryText: {
+        fontFamily: 'Poppins_600SemiBold',
+        fontSize: 14,
+        color: '#0bf6f6',
+    },
 });
-

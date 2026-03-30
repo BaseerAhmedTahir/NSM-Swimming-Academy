@@ -10,7 +10,7 @@ export default function SplashScreen() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            router.replace('/login');
+            router.replace('/branch-selection');
         }, 2000); // 2 seconds
 
         return () => clearTimeout(timer);
@@ -19,7 +19,7 @@ export default function SplashScreen() {
     return (
         <AppBackground style={styles.container}>
             <View style={styles.centerContent}>
-                <Logo size={140} textVisible={false} />
+                <Logo size={180} textVisible={false} />
             </View>
             <Text style={styles.tagline}>INHALE CONFIDENCE EXHALE FEAR</Text>
         </AppBackground>
@@ -37,17 +37,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     tagline: {
-        fontSize: 16,
-        fontFamily: 'Nunito_800ExtraBold',
+        fontSize: 18,
+        fontFamily: 'Poppins_700Bold',
         color: '#FFFFFF',
         textTransform: 'uppercase',
-        letterSpacing: 1.5,
+        letterSpacing: 1,
         marginBottom: 80,
         textAlign: 'center',
         paddingHorizontal: 20,
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+        // Optional subtle glow for text
+        textShadowColor: 'rgba(11, 246, 246, 0.5)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10,
     }
 });
 

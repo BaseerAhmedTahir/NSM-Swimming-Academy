@@ -28,11 +28,11 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(13, 27, 42, 0.6)', // Consistent glass look
+        backgroundColor: theme.colors.surface,
         borderRadius: theme.radius.md,
-        borderWidth: 1,
-        borderColor: 'rgba(11, 246, 246, 0.2)',
-        height: 56,
+        borderWidth: 1.2,
+        borderColor: theme.colors.primary,
+        height: 60,
         paddingHorizontal: theme.spacing.lg,
     },
     iconContainer: {
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         color: theme.colors.textPrimary,
-        fontFamily: 'Nunito_600SemiBold',
+        fontFamily: 'Poppins_500Medium',
         fontSize: 16,
     }
 });

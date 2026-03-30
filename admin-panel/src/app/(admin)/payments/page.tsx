@@ -31,13 +31,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Mock Data
-import { payments as initialPayments } from "@/lib/mockData";
+import api from "@/lib/api";
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PaymentsPage() {
-    const [payments, setPayments] = useState<any[]>(initialPayments);
+    const { user } = useAuth();
+    const [payments, setPayments] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [dynamicPackages, setDynamicPackages] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBranch, setSelectedBranch] = useState("all-branches");
+    const [selectedStatus, setSelectedStatus] = useState("all-status");
+    const [selectedMode, setSelectedMode] = useState("all-modes");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
 
     // Modals
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -47,38 +57,180 @@ export default function PaymentsPage() {
     // Form State
     const [applyVat, setApplyVat] = useState(true);
     const [isInstallment, setIsInstallment] = useState(false);
+    const [formData, setFormData] = useState({
+        studentId: "",
+        amount: 0,
+        paidAmount: 0,
+        discount: 0,
+        packageType: "SILVER",
+        paymentMode: "CARD",
+        registrationType: "NEW"
+    });
 
     // Handlers
-    const handleOpenAdd = () => setIsAddModalOpen(true);
+    const handleOpenAdd = () => {
+        setFormData({
+            studentId: "",
+            amount: 1500,
+            paidAmount: 1500,
+            discount: 0,
+            packageType: "SILVER",
+            paymentMode: "CARD",
+            registrationType: "NEW"
+        });
+        setIsAddModalOpen(true);
+    };
 
     const handleOpenInvoice = (payment: any) => {
         setSelectedPayment(payment);
         setIsInvoiceModalOpen(true);
     };
 
-    const handleSavePayment = (e: React.FormEvent) => {
+    const handleSavePayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        toast.success("Payment recorded successfully");
-        setIsAddModalOpen(false);
+        setIsSubmitting(true);
+        try {
+            const finalAmount = formData.amount - formData.discount;
+            const status = formData.paidAmount >= finalAmount ? 'PAID' : (formData.paidAmount > 0 ? 'PARTIAL' : 'PENDING');
+            await api.post('/payments', { ...formData, status });
+            toast.success("Payment recorded successfully");
+            setIsAddModalOpen(false);
+            fetchPayments();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to record payment");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    // Filter active payments by branch
-    const activePayments = payments.filter(payment => selectedBranch === "all-branches" ? true : (payment.branch || "Dubai").toLowerCase() === selectedBranch.toLowerCase());
+    const fetchBranches = async () => {
+        try {
+            const res = await api.get('/branches');
+            setBranches(res.data.data.results || res.data.data || []);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchStudents = async () => {
+        try {
+            const res = await api.get('/students?limit=1000');
+            setAllStudents(res.data.data.results || res.data.data || []);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchSettings = async () => {
+        try {
+            const res = await api.get('/settings');
+            if (res.data.success) {
+                const pkgs = res.data.data.filter((s:any) => s.key.startsWith('PACKAGE_')).map((s:any) => {
+                    const parsed = JSON.parse(s.value);
+                    return {
+                        id: s.key.replace('PACKAGE_', ''),
+                        name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
+                        classes: parsed.classes,
+                        price: parsed.price
+                    };
+                });
+                if(pkgs.length > 0) setDynamicPackages(pkgs);
+            }
+        } catch(e) {}
+    };
+
+    const fetchPayments = async () => {
+        setIsLoading(true);
+        try {
+            const res = await api.get('/payments');
+            if (res.data.success) {
+                const results = res.data.data.results || res.data.data;
+                const mapped = results.map((pay: any) => ({
+                    id: pay.invoiceNumber || pay.id,
+                    studentName: pay.student?.name || "Unknown",
+                    studentId: pay.student?.studentId || "N/A",
+                    phone: pay.student?.phone || "N/A",
+                    trn: pay.student?.trn || "",
+                    branch: pay.branch?.name || "",
+                    branchId: pay.branchId || "",
+                    package: pay.packageType || "Standard",
+                    date: new Date(pay.paymentDate || pay.createdAt).toLocaleDateString(),
+                    mode: pay.paymentMode || "Card",
+                    status: pay.status === 'PAID' ? 'Paid' : 'Pending',
+                    amount: pay.totalAmount || 0,
+                    realId: pay.id
+                }));
+                setPayments(mapped);
+            }
+        } catch (error) {
+            console.error("Failed to load payments", error);
+            toast.error("Failed to load payments from server");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+        fetchPayments();
+        fetchStudents();
+        fetchBranches();
+    }, []);
+
+    const handleExport = () => {
+        if (!payments || payments.length === 0) {
+            toast.error("No payments to export");
+            return;
+        }
+        
+        const headers = ["Invoice ID", "Student Name", "Package", "Date", "Mode", "Status", "Amount (AED)"];
+        const csvContent = [
+            headers.join(","),
+            ...activePayments.map((p) => [
+                p.id,
+                `"${p.studentName}"`,
+                p.package,
+                `"${p.date}"`,
+                p.mode,
+                p.status,
+                p.amount
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `payments_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Filter active payments by branchId (matches dropdown value which uses b.id)
+    const activePayments = payments.filter(payment => selectedBranch === "all-branches" ? true : payment.branchId === selectedBranch);
 
     // Stats
     const totalRevenue = activePayments
         .filter((p: any) => p.status === 'Paid')
         .reduce((sum: number, p: any) => sum + (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount), 0);
 
-    const pendingAmount = activePayments
-        .filter((p: any) => p.status === 'Pending')
-        .reduce((sum: number, p: any) => sum + (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount), 0);
+    const pendingPaymentsList = activePayments.filter((p: any) => p.status === 'Pending');
+    const pendingAmount = pendingPaymentsList.reduce((sum: number, p: any) => sum + (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount), 0);
+
+    // Dynamic Payment Mode Distribution
+    const totalCount = activePayments.length || 1;
+    const modeStats = {
+        card: Math.round((activePayments.filter(p => p.mode.toUpperCase() === 'CARD').length / totalCount) * 100),
+        online: Math.round((activePayments.filter(p => p.mode.toUpperCase() === 'ONLINE').length / totalCount) * 100),
+        cash: Math.round((activePayments.filter(p => p.mode.toUpperCase() === 'CASH').length / totalCount) * 100),
+    };
 
     // Search Filter
-    const filteredPayments = activePayments.filter(payment =>
-        payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPayments = activePayments.filter(payment => {
+        const query = searchTerm.toLowerCase();
+        const matchesSearch = payment.studentName.toLowerCase().includes(query) || payment.id.toLowerCase().includes(query);
+        const matchesStatus = selectedStatus === "all-status" || payment.status.toLowerCase() === selectedStatus;
+        const matchesMode = selectedMode === "all-modes" || payment.mode.toLowerCase().includes(selectedMode.toLowerCase());
+        
+        return matchesSearch && matchesStatus && matchesMode;
+    });
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -94,7 +246,7 @@ export default function PaymentsPage() {
                 </div>
 
                 <div className="flex gap-3">
-                    <Button variant="outline" className="font-bold border-border/50">
+                    <Button variant="outline" className="font-bold border-border/50" onClick={handleExport}>
                         <Download className="w-4 h-4 mr-2" /> Export Log
                     </Button>
                     <Button onClick={handleOpenAdd} className="font-bold shadow-sm gap-2">
@@ -109,7 +261,7 @@ export default function PaymentsPage() {
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm font-bold text-primary uppercase tracking-wider mb-1">Total Revenue (Feb)</p>
+                                <p className="text-sm font-bold text-primary uppercase tracking-wider mb-1">Total Revenue ({new Date().toLocaleString('default', { month: 'short', year: 'numeric' })})</p>
                                 <h3 className="text-3xl font-black text-foreground tracking-tight">AED {totalRevenue.toLocaleString()}</h3>
                             </div>
                             <div className="p-3 bg-primary/20 text-primary rounded-xl">
@@ -117,7 +269,7 @@ export default function PaymentsPage() {
                             </div>
                         </div>
                         <p className="text-xs font-semibold text-primary/80 mt-4 flex items-center gap-1">
-                            <ArrowUpRight className="w-4 h-4" /> +15% from last month
+                            <ArrowUpRight className="w-4 h-4" /> {activePayments.filter((p:any) => p.status === 'Paid').length} paid records
                         </p>
                     </CardContent>
                 </Card>
@@ -133,7 +285,7 @@ export default function PaymentsPage() {
                             </div>
                         </div>
                         <p className="text-xs font-semibold text-warning/80 mt-4 flex items-center gap-1">
-                            <ArrowDownRight className="w-4 h-4" /> 8 students require follow-up
+                            <ArrowDownRight className="w-4 h-4" /> {pendingPaymentsList.length} records require follow-up
                         </p>
                     </CardContent>
                 </Card>
@@ -143,17 +295,17 @@ export default function PaymentsPage() {
                             <div>
                                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-1">Payment Modes</p>
                                 <div className="flex items-center gap-4 mt-2">
-                                    <div className="flex flex-col"><span className="text-sm font-black">60%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Credit Card</span></div>
-                                    <div className="flex flex-col"><span className="text-sm font-black">30%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Online Links</span></div>
-                                    <div className="flex flex-col"><span className="text-sm font-black">10%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Cash</span></div>
+                                    <div className="flex flex-col"><span className="text-sm font-black">{modeStats.card}%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Card</span></div>
+                                    <div className="flex flex-col"><span className="text-sm font-black">{modeStats.online}%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Online</span></div>
+                                    <div className="flex flex-col"><span className="text-sm font-black">{modeStats.cash}%</span><span className="text-[10px] text-muted-foreground uppercase font-bold">Cash</span></div>
                                 </div>
                             </div>
                         </div>
-                        {/* Mock Mini Bar Chart */}
-                        <div className="w-full h-2 rounded-full overflow-hidden flex mt-6">
-                            <div className="h-full bg-primary w-[60%]" />
-                            <div className="h-full bg-secondary w-[30%]" />
-                            <div className="h-full bg-accent w-[10%]" />
+                        {/* Dynamic Mini Bar Chart */}
+                        <div className="w-full h-2 rounded-full overflow-hidden flex mt-6 bg-muted">
+                            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${modeStats.card}%` }} />
+                            <div className="h-full bg-secondary transition-all duration-500" style={{ width: `${modeStats.online}%` }} />
+                            <div className="h-full bg-accent transition-all duration-500" style={{ width: `${modeStats.cash}%` }} />
                         </div>
                     </CardContent>
                 </Card>
@@ -171,18 +323,20 @@ export default function PaymentsPage() {
                     />
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                        <SelectTrigger className="w-full md:w-[150px] border-border/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-medium hover:bg-white">
-                            <SelectValue placeholder="Branch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all-branches">All Branches</SelectItem>
-                            <SelectItem value="dubai">Dubai</SelectItem>
-                            <SelectItem value="sharjah">Sharjah</SelectItem>
-                            <SelectItem value="abu-dhabi">Abu Dhabi</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select defaultValue="all-status">
+                    {user?.role === 'SUPER_ADMIN' && (
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                            <SelectTrigger className="w-full md:w-[150px] border-border/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-medium hover:bg-white">
+                                <SelectValue placeholder="Branch" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all-branches">All Branches</SelectItem>
+                                {branches.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                         <SelectTrigger className="w-full md:w-[150px] border-border/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-medium hover:bg-white">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
@@ -192,7 +346,7 @@ export default function PaymentsPage() {
                             <SelectItem value="pending">Pending</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select defaultValue="all-modes">
+                    <Select value={selectedMode} onValueChange={setSelectedMode}>
                         <SelectTrigger className="w-full md:w-[150px] border-border/50 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-medium hover:bg-white">
                             <SelectValue placeholder="Pay Mode" />
                         </SelectTrigger>
@@ -222,7 +376,11 @@ export default function PaymentsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredPayments.length > 0 ? (
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-medium">Fetching secure records...</TableCell>
+                            </TableRow>
+                        ) : filteredPayments.length > 0 ? (
                             filteredPayments.map((payment) => (
                                 <TableRow key={payment.id} className="hover:bg-muted/30 border-border/50 transition-colors cursor-pointer" onClick={() => handleOpenInvoice(payment)}>
                                     <TableCell className="font-bold text-primary">{payment.id}</TableCell>
@@ -288,32 +446,70 @@ export default function PaymentsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Select Student <span className="text-error">*</span></Label>
-                                    <Select required>
+                                    <Select value={formData.studentId} onValueChange={(v) => {
+                                        const std = allStudents.find((s: any) => s.id === v);
+                                        const latestPayment = std?.payments?.[0];
+                                        const activePackage = std?.packageType || std?.activePackage?.packageType || "SILVER";
+                                        
+                                        if (std) {
+                                            if (latestPayment && latestPayment.status !== 'PAID') {
+                                                setFormData(prev => ({
+                                                    ...prev, 
+                                                    studentId: v, 
+                                                    amount: latestPayment.totalAmount || 1500,
+                                                    paidAmount: latestPayment.totalAmount || 1500,
+                                                    packageType: activePackage
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({...prev, studentId: v, packageType: activePackage}));
+                                            }
+                                        }
+                                    }} required>
                                         <SelectTrigger><SelectValue placeholder="Search student name or ID..." /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="NSM-DXB-021">Ahmed Ziad (***4567)</SelectItem>
-                                            <SelectItem value="NSM-SHJ-044">Sara Ali (***3575)</SelectItem>
+                                        <SelectContent className="max-h-[300px]">
+                                            {allStudents.filter((s: any) => selectedBranch === "all-branches" || s.branchId === selectedBranch || s.branch?.id === selectedBranch).map((s: any) => {
+                                                const hasPending = s.payments?.[0] && s.payments[0].status !== 'PAID';
+                                                return (
+                                                    <SelectItem key={s.id} value={s.id}>
+                                                        {s.name} ({s.studentId}) 
+                                                        {hasPending ? ` - Unpaid: AED ${s.payments[0].totalAmount}` : ''}
+                                                    </SelectItem>
+                                                );
+                                            })}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Transaction Date <span className="text-error">*</span></Label>
-                                    <Input type="date" defaultValue="2026-02-24" required />
+                                    <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Package / Item</Label>
-                                    <Select defaultValue="Silver">
+                                    <Select value={formData.packageType} onValueChange={(v) => setFormData({...formData, packageType: v})}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Individual">Individual (1 Class)</SelectItem>
-                                            <SelectItem value="Silver">Silver (12 Classes)</SelectItem>
-                                            <SelectItem value="Gold">Gold (24 Classes)</SelectItem>
+                                            {dynamicPackages.length > 0 ? dynamicPackages.map(pkg => (
+                                                <SelectItem key={pkg.id} value={pkg.id}>
+                                                    {pkg.name} ({pkg.classes} Classes - AED {pkg.price})
+                                                </SelectItem>
+                                            )) : (
+                                                <>
+                                                    <SelectItem value="INDIVIDUAL">Individual (1 Class)</SelectItem>
+                                                    <SelectItem value="BASIC">Basic (8 Classes)</SelectItem>
+                                                    <SelectItem value="SILVER">Silver (12 Classes)</SelectItem>
+                                                    <SelectItem value="GOLD">Gold (24 Classes)</SelectItem>
+                                                </>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2 flex items-end">
                                     <div className="flex items-center space-x-2 border rounded-xl p-2 w-full h-10 bg-muted/10">
-                                        <Switch id="pay-renewal" />
+                                        <Switch 
+                                            id="pay-renewal" 
+                                            checked={formData.registrationType === 'RENEWAL'} 
+                                            onCheckedChange={(c) => setFormData({...formData, registrationType: c ? 'RENEWAL' : 'NEW'})}
+                                        />
                                         <Label htmlFor="pay-renewal" className="cursor-pointer font-bold">Registration Fee Applicable</Label>
                                     </div>
                                 </div>
@@ -323,48 +519,61 @@ export default function PaymentsPage() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label>Payment Method</Label>
-                                        <Select defaultValue="Card">
+                                        <Select value={formData.paymentMode} onValueChange={(v) => setFormData({...formData, paymentMode: v})}>
                                             <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="Cash">Cash</SelectItem>
-                                                <SelectItem value="Card">Credit Card / POS</SelectItem>
-                                                <SelectItem value="Online">Online Link</SelectItem>
+                                                <SelectItem value="CASH">Cash</SelectItem>
+                                                <SelectItem value="CARD">Credit Card / POS</SelectItem>
+                                                <SelectItem value="ONLINE">Online Link</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
+                                        <Label>Total Amount (AED)</Label>
+                                        <Input 
+                                            type="number" 
+                                            value={formData.amount} 
+                                            onChange={(e) => setFormData({...formData, amount: Number(e.target.value)})} 
+                                            className="bg-card" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Paid Amount (AED)</Label>
+                                        <Input 
+                                            type="number" 
+                                            value={formData.paidAmount} 
+                                            onChange={(e) => setFormData({...formData, paidAmount: Number(e.target.value)})} 
+                                            className="bg-card" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
                                         <Label>Discount Applied (AED)</Label>
-                                        <Input type="number" placeholder="0" defaultValue="0" className="bg-card" />
-                                    </div>
-                                    <div className="flex items-center justify-between pt-2">
-                                        <Label className="font-bold">Apply VAT (5%)</Label>
-                                        <Switch checked={applyVat} onCheckedChange={setApplyVat} />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <Label className="font-bold">Status: Pending Installment</Label>
-                                        <Switch checked={isInstallment} onCheckedChange={setIsInstallment} />
+                                        <Input 
+                                            type="number" 
+                                            value={formData.discount} 
+                                            onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})} 
+                                            className="bg-card" 
+                                        />
                                     </div>
                                 </div>
 
                                 <div className="bg-card p-4 rounded-xl border border-border/50 shadow-sm space-y-2 flex flex-col justify-end">
                                     <div className="flex justify-between text-sm font-medium">
                                         <span className="text-muted-foreground">Subtotal:</span>
-                                        <span>AED 1,500</span>
+                                        <span>AED {formData.amount}</span>
                                     </div>
                                     <div className="flex justify-between text-sm font-medium">
                                         <span className="text-muted-foreground">Discount:</span>
-                                        <span className="text-error">- AED 0</span>
+                                        <span className="text-error">- AED {formData.discount}</span>
                                     </div>
-                                    {applyVat && (
-                                        <div className="flex justify-between text-sm font-medium">
-                                            <span className="text-muted-foreground">VAT (5%):</span>
-                                            <span>AED 75</span>
-                                        </div>
-                                    )}
                                     <div className="h-px w-full bg-border/50 my-2" />
                                     <div className="flex justify-between items-center pt-2">
-                                        <span className="font-black text-foreground text-lg cursor-pointer">Total Received:</span>
-                                        <span className="font-black text-primary text-xl tracking-tight">AED {applyVat ? '1,575' : '1,500'}</span>
+                                        <span className="font-black text-foreground text-lg cursor-pointer">Total Due:</span>
+                                        <span className="font-black text-primary text-xl tracking-tight">AED {formData.amount - formData.discount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2">
+                                        <span className="font-bold text-muted-foreground text-sm">Remaining:</span>
+                                        <span className="font-bold text-error text-sm tracking-tight">AED {(formData.amount - formData.discount) - formData.paidAmount}</span>
                                     </div>
                                 </div>
                             </div>
@@ -401,11 +610,15 @@ export default function PaymentsPage() {
 
                         <div className="grid grid-cols-2 gap-8">
                             <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Received From</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Billed To</p>
                                 <h3 className="font-black text-lg text-slate-800">{selectedPayment?.studentName || "Ziad Ahmed"}</h3>
-                                <p className="text-sm font-medium text-slate-600">ID: NSM-DXB-001</p>
-                                <p className="text-sm font-medium text-slate-600">+971 50 123 4567</p>
+                                <p className="text-sm font-medium text-slate-600">ID: {selectedPayment?.studentId || "NSM-DXB-001"}</p>
+                                <p className="text-sm font-medium text-slate-600">{selectedPayment?.phone || "+971 50 123 4567"}</p>
+                                {selectedPayment?.trn && (
+                                    <p className="text-sm font-bold text-blue-600 mt-1">TRN: {selectedPayment.trn}</p>
+                                )}
                             </div>
+
                             <div className="text-right">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Info</p>
                                 <p className="font-bold text-slate-800">Status: <span className={selectedPayment?.status === 'Pending' ? "text-yellow-600" : "text-green-600"}>{selectedPayment?.status || "PAID"}</span></p>
@@ -444,7 +657,35 @@ export default function PaymentsPage() {
 
                     <div className="bg-slate-100 p-4 flex justify-end gap-3 border-t">
                         <Button variant="outline" onClick={() => setIsInvoiceModalOpen(false)}>Close</Button>
-                        <Button onClick={() => { toast.success("Printing invoice..."); setIsInvoiceModalOpen(false); }} className="font-bold gap-2">
+                        <Button onClick={async () => { 
+                            try {
+                                if (!selectedPayment?.id) {
+                                    toast.error("Invoice ID not found");
+                                    return;
+                                }
+                                
+                                toast.loading("Preparing PDF...", { id: "downloading-receipt" });
+                                setIsInvoiceModalOpen(false); 
+                                
+                                const response = await api.get(`/invoices/${selectedPayment.realId || selectedPayment.id}/download`, {
+                                    responseType: 'blob'
+                                });
+                                
+                                const url = window.URL.createObjectURL(new Blob([response.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', `Invoice_${selectedPayment.invoiceNumber || selectedPayment.id}.pdf`);
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                                window.URL.revokeObjectURL(url);
+                                
+                                toast.success("Receipt downloaded successfully", { id: "downloading-receipt" });
+                            } catch (err) {
+                                console.error("Download error:", err);
+                                toast.error("Failed to download receipt", { id: "downloading-receipt" });
+                            }
+                        }} className="font-bold gap-2">
                             <Printer className="w-4 h-4" /> Print Receipt
                         </Button>
                     </div>

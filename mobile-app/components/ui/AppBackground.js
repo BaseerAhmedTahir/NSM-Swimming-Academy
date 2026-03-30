@@ -4,8 +4,8 @@ import { theme } from '../../constants/theme';
 
 export default function AppBackground({ children, style }) {
     return (
-        <ImageBackground 
-            source={require('../../assets/images/bg.png')} 
+        <ImageBackground
+            source={require('../../assets/images/bg.png')}
             style={[styles.background, style]}
             resizeMode="cover"
         >
@@ -18,11 +18,12 @@ export default function AppBackground({ children, style }) {
 
 const styles = StyleSheet.create({
     background: {
-        flex: 1,
+        width: '100%',
+        height: '100%',
         backgroundColor: theme.colors.background,
     },
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 15, 31, 0.65)', // Darker overlay for better contrast
+        backgroundColor: 'rgba(0, 15, 31, 0.3)',
     }
 });

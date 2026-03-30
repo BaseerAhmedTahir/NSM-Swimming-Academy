@@ -31,16 +31,18 @@ export const theme = {
   colors: {
     primary: "#0bf6f6",
     background: "#001e3f",
-    surface: "#2d3a48",
+    surface: "rgba(21, 35, 50, 0.2)", // Highly transparent foundation
+    surface20: "rgba(11, 246, 246, 0.1)", // Even lighter logo foundation
     textPrimary: "#ffffff",
     textSecondary: "#a0aab2",
-    borderSoft: "rgba(11, 246, 246, 0.2)", // Subtle cyan border
-    primary20: "rgba(11, 246, 246, 0.20)",
-    surface80: "rgba(0, 30, 63, 0.70)", // Deeper blue for cards
+    borderSoft: "rgba(11, 246, 246, 0.3)",
+    primary20: "rgba(11, 246, 246, 0.10)",
+    backgroundDark: "rgba(0, 30, 63, 0.9)",
+    activeTab: "#001e3f",
     error: "#ff5252",
     success: "#4caf50",
     warning: "#ffc107",
-    card: "rgba(11, 246, 246, 0.05)"
+    card: "rgba(21, 35, 50, 0.2)"
   },
   radius: {
     sm: 12,

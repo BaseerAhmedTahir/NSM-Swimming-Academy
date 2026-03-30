@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
@@ -30,22 +30,9 @@ const branches = [
     }
 ];
 
-export default function ContactScreen() {
-    const [activeTab, setActiveTab] = React.useState(0);
-
-    const handleCall = (phone: string) => {
-        Linking.openURL(`tel:${phone}`);
-    };
-
-    const handleWhatsApp = (phone: string) => {
-        Linking.openURL(`whatsapp://send?phone=${phone}`);
-    };
-
-    const handleMap = (address: string) => {
-        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`);
-    };
-
-    const currentBranch = branches[activeTab];
+export default function ContactUsScreen() {
+    const handleCall = () => Linking.openURL('tel:+971501234567');
+    const handleWhatsApp = () => Linking.openURL('whatsapp://send?phone=+971501234567');
 
     return (
         <AppBackground style={styles.container}>
@@ -57,88 +44,64 @@ export default function ContactScreen() {
                         <Text style={styles.subtitle}>We're here to help you make a splash!</Text>
                     </View>
 
-                    {/* Branch Selection Tabs */}
-                    <View style={styles.tabContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                            {branches.map((branch, index) => (
-                                <TouchableOpacity 
-                                    key={branch.id} 
-                                    onPress={() => setActiveTab(index)}
-                                    style={[styles.tabButton, activeTab === index && styles.activeTabButton]}
-                                >
-                                    <Text style={[styles.tabText, activeTab === index && styles.activeTabText]}>
-                                        {branch.name.split(' ')[0]}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                    {/* Quick Actions */}
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity
+                            style={styles.callButton}
+                            onPress={handleCall}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="call" size={24} color="#000" />
+                            <Text style={styles.callButtonText}>Call Us</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.whatsappButton}
+                            onPress={handleWhatsApp}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="logo-whatsapp" size={24} color={theme.colors.primary} />
+                            <Text style={styles.whatsappButtonText}>WhatsApp</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Branch Details Card */}
-                    <GlassCard style={styles.infoCard}>
-                        <View style={styles.branchHeader}>
-                            <View style={styles.branchIconBox}>
-                                <Ionicons name="business" size={24} color={theme.colors.primary} />
+                    {/* Email Support */}
+                    <TouchableOpacity activeOpacity={0.7}>
+                        <GlassCard style={styles.emailCard}>
+                            <View style={styles.emailIconBox}>
+                                <Ionicons name="mail" size={22} color={theme.colors.primary} />
                             </View>
-                            <View>
-                                <Text style={styles.branchDetailName}>{currentBranch.name}</Text>
-                                <Text style={styles.branchStatus}>Open Now</Text>
+                            <View style={styles.emailContent}>
+                                <Text style={styles.emailLabel}>Email Support</Text>
+                                <Text style={styles.emailValue}>info@nsm.com</Text>
                             </View>
-                        </View>
+                            <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
+                        </GlassCard>
+                    </TouchableOpacity>
 
-                        <View style={styles.divider} />
+                    <Text style={styles.sectionTitle}>Our Locations</Text>
 
-                        <TouchableOpacity style={styles.contactItem} onPress={() => handleMap(currentBranch.address)}>
-                            <Ionicons name="location-outline" size={20} color="rgba(255,255,255,0.5)" />
-                            <Text style={styles.contactText}>{currentBranch.address}</Text>
-                        </TouchableOpacity>
+                    {/* Locations */}
+                    {branches.map((branch) => (
+                        <GlassCard key={branch.id} style={styles.locationCard}>
+                            <View style={styles.locationHeader}>
+                                <Ionicons name="location" size={22} color={theme.colors.primary} />
+                                <Text style={styles.locationTitle}>{branch.name}</Text>
+                            </View>
 
-                        <TouchableOpacity style={styles.contactItem} onPress={() => handleCall(currentBranch.phone)}>
-                            <Ionicons name="call-outline" size={20} color="rgba(255,255,255,0.5)" />
-                            <Text style={styles.contactText}>{currentBranch.phone}</Text>
-                        </TouchableOpacity>
+                            <Text style={styles.locationAddress}>{branch.address}</Text>
 
-                        <View style={styles.contactItem}>
-                            <Ionicons name="time-outline" size={20} color="rgba(255,255,255,0.5)" />
-                            <Text style={styles.contactText}>{currentBranch.hours}</Text>
-                        </View>
+                            <View style={styles.locationDetailItem}>
+                                <Ionicons name="call-outline" size={16} color="rgba(255,255,255,0.5)" />
+                                <Text style={styles.locationDetailText}>{branch.phone}</Text>
+                            </View>
 
-                        <View style={styles.actionGrid}>
-                            <TouchableOpacity style={styles.gridBtn} onPress={() => handleCall(currentBranch.phone)}>
-                                <View style={[styles.gridIconBox, { backgroundColor: 'rgba(11, 246, 246, 0.1)' }]}>
-                                    <Ionicons name="call" size={22} color={theme.colors.primary} />
-                                </View>
-                                <Text style={styles.gridBtnText}>Call</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.gridBtn} onPress={() => handleWhatsApp(currentBranch.phone)}>
-                                <View style={[styles.gridIconBox, { backgroundColor: 'rgba(37, 211, 102, 0.1)' }]}>
-                                    <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
-                                </View>
-                                <Text style={styles.gridBtnText}>WhatsApp</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.gridBtn} onPress={() => handleMap(currentBranch.address)}>
-                                <View style={[styles.gridIconBox, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-                                    <Ionicons name="map" size={22} color="#fff" />
-                                </View>
-                                <Text style={styles.gridBtnText}>Map</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </GlassCard>
-
-                    {/* Map Placeholder */}
-                    <View style={styles.mapSection}>
-                        <GlassCard style={styles.mapCard}>
-                            <View style={styles.mapPlaceholder}>
-                                <View style={styles.mapOverlay}>
-                                    <View style={styles.mapMarker}>
-                                        <Ionicons name="location" size={30} color={theme.colors.primary} />
-                                        <View style={styles.markerShadow} />
-                                    </View>
-                                    <Text style={styles.mapLabel}>Find us on the map</Text>
-                                </View>
+                            <View style={styles.locationDetailItem}>
+                                <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.5)" />
+                                <Text style={styles.locationDetailText}>{branch.hours}</Text>
                             </View>
                         </GlassCard>
-                    </View>
+                    ))}
 
                 </ScrollView>
             </SafeAreaView>
@@ -155,152 +118,136 @@ const styles = StyleSheet.create({
         paddingBottom: 160,
     },
     header: {
-        marginBottom: 25,
+        marginBottom: 30,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 32,
         fontFamily: 'Nunito_900Black',
-        color: theme.colors.textPrimary,
-        marginBottom: 4,
+        color: '#fff',
+        marginBottom: 8,
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: 16,
         fontFamily: 'Poppins_400Regular',
         color: theme.colors.textSecondary,
     },
-    tabContainer: {
+    actionRow: {
+        flexDirection: 'row',
+        gap: 15,
         marginBottom: 25,
     },
-    tabScroll: {
-        gap: 12,
-    },
-    tabButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+    callButton: {
+        flex: 1,
+        flexDirection: 'row',
+        backgroundColor: theme.colors.primary,
+        height: 60,
         borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        // Boosted Glow effect for Android
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 15,
+        elevation: 20,
     },
-    activeTabButton: {
-        backgroundColor: 'rgba(11, 246, 246, 0.15)',
+    callButtonText: {
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 16,
+        color: '#000',
+    },
+    whatsappButton: {
+        flex: 1,
+        flexDirection: 'row',
+        borderWidth: 2,
         borderColor: theme.colors.primary,
+        height: 60,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
-    tabText: {
-        fontFamily: 'Poppins_600SemiBold',
-        fontSize: 13,
-        color: 'rgba(255, 255, 255, 0.5)',
+    whatsappButtonText: {
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 16,
+        color: '#fff',
     },
-    activeTabText: {
-        color: theme.colors.primary,
-    },
-    infoCard: {
-        padding: 16,
-        marginBottom: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    },
-    branchHeader: {
+    emailCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
+        padding: 16,
+        backgroundColor: 'rgba(0, 15, 31, 0.1)',
+        marginBottom: 30,
+        borderWidth: 1.5,
+        borderColor: '#c5ccd1ff',
+        borderRadius: 16,
     },
-    branchIconBox: {
-        width: 50,
-        height: 50,
-        borderRadius: 15,
+    emailIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
         backgroundColor: 'rgba(11, 246, 246, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: 15,
         borderWidth: 1,
         borderColor: 'rgba(11, 246, 246, 0.2)',
     },
-    branchDetailName: {
-        fontFamily: 'Nunito_800ExtraBold',
-        fontSize: 18,
-        color: theme.colors.textPrimary,
-        marginBottom: 2,
-    },
-    branchStatus: {
-        fontFamily: 'Poppins_600SemiBold',
-        fontSize: 13,
-        color: theme.colors.success,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        marginVertical: 20,
-    },
-    contactItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        gap: 12,
-    },
-    contactText: {
+    emailContent: {
         flex: 1,
+    },
+    emailLabel: {
         fontFamily: 'Poppins_400Regular',
         fontSize: 13,
-        color: theme.colors.textSecondary,
-        lineHeight: 18,
+        color: 'rgba(255,255,255,0.6)',
     },
-    actionGrid: {
-        flexDirection: 'row',
-        marginTop: 15,
-        gap: 12,
+    emailValue: {
+        fontFamily: 'Poppins_600SemiBold',
+        fontSize: 16,
+        color: '#fff',
     },
-    gridBtn: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    gridIconBox: {
-        width: 50,
-        height: 50,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
-    },
-    gridBtnText: {
-        fontFamily: 'Poppins_500Medium',
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-    },
-    mapSection: {
+    sectionTitle: {
+        fontSize: 22,
+        fontFamily: 'Nunito_800ExtraBold',
+        color: '#fff',
         marginBottom: 20,
     },
-    mapCard: {
-        padding: 0,
-        height: 200,
-        overflow: 'hidden',
+    locationCard: {
+        padding: 20,
+        marginBottom: 15,
+        backgroundColor: 'rgba(0, 15, 31, 0.1)',
+        borderWidth: 1.5,
+        borderColor: '#c5ccd1ff',
+        borderRadius: 16,
     },
-    mapPlaceholder: {
-        flex: 1,
-        backgroundColor: 'rgba(11, 246, 246, 0.05)',
-    },
-    mapOverlay: {
-        ...StyleSheet.absoluteFillObject,
+    locationHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.2)',
+        marginBottom: 12,
+        gap: 10,
     },
-    mapMarker: {
-        alignItems: 'center',
+    locationTitle: {
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 18,
+        color: '#fff',
     },
-    markerShadow: {
-        width: 10,
-        height: 4,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: 5,
-        marginTop: -4,
-    },
-    mapLabel: {
-        fontFamily: 'Poppins_600SemiBold',
+    locationAddress: {
+        fontFamily: 'Poppins_400Regular',
         fontSize: 14,
-        color: theme.colors.textPrimary,
-        marginTop: 12,
-        opacity: 0.8,
+        color: 'rgba(255,255,255,0.7)',
+        marginBottom: 15,
+        lineHeight: 20,
+    },
+    locationDetailItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    locationDetailText: {
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.6)',
     }
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,18 +13,74 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Waves } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import api from "@/lib/api";
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [loginType, setLoginType] = useState<"BRANCH" | "HQ">("BRANCH");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [branchId, setBranchId] = useState("");
+  const [branches, setBranches] = useState<{id: string, name: string}[]>([]);
+  const [fetchError, setFetchError] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Fetch branches on mount for the select dropdown
+  useEffect(() => {
+    api.get('/branches').then((res: any) => {
+      if (res.data.success) {
+        setBranches(res.data.data);
+      } else {
+        setFetchError(true);
+      }
+    }).catch((err: any) => {
+      console.error("Could not load branches", err);
+      setFetchError(true);
+    });
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loginType === "BRANCH" && !branchId) {
+      toast.error("Please select a branch");
+      return;
+    }
+
     setIsLoading(true);
-    // Mock login -> redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 800);
+    try {
+      const payload: any = { username, password };
+      if (loginType === "BRANCH") {
+        payload.branchId = branchId;
+      }
+      
+      const response = await api.post('/auth/admin/login', payload);
+
+      if (response.data.success) {
+        toast.success("Login successful!");
+        const { accessToken, admin } = response.data.data;
+        
+        // Parse branch permissions for STAFF users so they're available globally
+        let parsedPermissions: string[] | undefined;
+        if (admin.role === 'STAFF' && admin.branch?.permissions) {
+          try {
+            parsedPermissions = typeof admin.branch.permissions === 'string'
+              ? JSON.parse(admin.branch.permissions)
+              : admin.branch.permissions;
+          } catch {
+            parsedPermissions = ['dashboard', 'schedule', 'registration', 'payments', 'coaches', 'reminders'];
+          }
+        }
+        
+        login(accessToken, { ...admin, permissions: parsedPermissions });
+        router.push("/dashboard");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.details || "Invalid credentials or branch access denied");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,19 +107,44 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="branch" className="text-accent-foreground font-semibold">Select Branch</Label>
-            <Select defaultValue="dubai">
-              <SelectTrigger id="branch" className="h-12 bg-background border-border rounded-xl">
-                <SelectValue placeholder="Select a branch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dubai">Dubai Head Office</SelectItem>
-                <SelectItem value="sharjah">Sharjah</SelectItem>
-                <SelectItem value="abu-dhabi">Abu Dhabi</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex p-1 bg-muted/50 rounded-xl mb-2">
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginType === 'BRANCH' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setLoginType('BRANCH')}
+            >
+              Branch Login
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginType === 'HQ' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setLoginType('HQ')}
+            >
+              HQ Login
+            </button>
           </div>
+
+          {loginType === 'BRANCH' && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <Label htmlFor="branch" className="text-accent-foreground font-semibold">Select Branch</Label>
+              <Select value={branchId} onValueChange={setBranchId}>
+                <SelectTrigger id="branch" className="h-12 bg-background border-border rounded-xl">
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fetchError ? (
+                    <SelectItem value="error" disabled>Failed to load branches. Is backend running?</SelectItem>
+                  ) : branches.length === 0 ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : (
+                    branches.map(b => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="username" className="text-accent-foreground font-semibold">Username</Label>
@@ -72,7 +153,8 @@ export default function LoginPage() {
               placeholder="Enter admin username"
               required
               className="h-12 bg-background border-border rounded-xl"
-              defaultValue="admin"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </div>
 
@@ -87,7 +169,8 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               className="h-12 bg-background border-border rounded-xl"
-              defaultValue="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
@@ -101,7 +184,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-muted-foreground">For prototype demo, any credentials will work.</p>
+          <p className="text-xs text-muted-foreground">Login directly connects to the real PostgreSQL database via the API.</p>
         </div>
       </div>
     </div>

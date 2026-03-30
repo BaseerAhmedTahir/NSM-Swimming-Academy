@@ -1,47 +1,113 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
-import { students, notifications } from '../../data/mockData';
 import AppBackground from '../../components/ui/AppBackground';
 import GlassCard from '../../components/ui/GlassCard';
-
-// Mock specific student for prototype
-const currentStudent = students[0];
-const unreadNotifications = notifications.filter(n => !n.read).length;
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../../lib/api';
 
 export default function HomeScreen() {
+  const [branchName, setBranchName] = useState('My Branch');
+  const [student, setStudent] = useState<any>(null);
+  const [attendance, setAttendance] = useState({ attended: 0, totalClasses: 0, remaining: 0 });
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const storedBranch = await AsyncStorage.getItem('selectedBranchName');
+        if (storedBranch) setBranchName(storedBranch);
+
+        const [profileRes, notifRes, scheduleRes, attRes] = await Promise.all([
+          api.get('/student-app/profile').catch(() => ({ data: { success: false }})),
+          api.get('/student-app/notifications').catch(() => ({ data: { success: false, data: [] }})),
+          api.get('/student-app/schedule').catch(() => ({ data: { success: false, data: [] }})),
+          api.get('/student-app/attendance').catch(() => ({ data: { success: false, data: [] }})),
+        ]);
+
+        if (profileRes.data.success) {
+          const profileData = profileRes.data.data;
+          const scheduleData = scheduleRes.data.success && scheduleRes.data.data.length > 0
+              ? scheduleRes.data.data[0] : null;
+          setStudent({ ...profileData, nextClass: scheduleData });
+          if (!storedBranch && profileData.branch) {
+              setBranchName(profileData.branch.name);
+          }
+        }
+
+        if (attRes.data.success) {
+          const records: any[] = attRes.data.data;
+          const attended = records.filter(r => r.status === 'ATTENDED').length;
+          // Get totalClasses directly from profile response data (student state isn't set yet)
+          const total = profileRes.data.success ? (profileRes.data.data.totalClasses || 0) : 0;
+          setAttendance({ attended, totalClasses: total, remaining: Math.max(0, total - attended) });
+        }
+
+        if (notifRes.data.success) {
+          setNotifications(notifRes.data.data);
+        }
+      } catch (error) {
+        console.error('Dashboard DB fetch error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+
+  const unreadCount = notifications.filter(n => !(n as any).read).length;
+
+  if (loading || !student) {
+      return (
+          <AppBackground style={styles.container}>
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]} edges={['top']}>
+                <Text style={{color: 'white' }}>Loading Dashboard...</Text>
+            </SafeAreaView>
+          </AppBackground>
+      );
+  }
+
   return (
     <AppBackground style={styles.container}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* Top Bar: Location & Notifications */}
-          <View style={styles.topBar}>
-            <View style={styles.branchBadge}>
-              <Ionicons name="location" size={14} color={theme.colors.primary} />
-              <Text style={styles.branchText}>{currentStudent.branch}</Text>
-            </View>
-            <TouchableOpacity style={styles.notificationBtn}>
-              <Ionicons name="notifications-outline" size={28} color={theme.colors.textPrimary} />
-              {unreadNotifications > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{unreadNotifications}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Centered Profile Header */}
-          <View style={styles.profileHeader}>
+          {/* Profile & Top Bar Row */}
+          <View style={styles.headerSection}>
             <View style={styles.profileImageContainer}>
               <View style={styles.profileImageBorder}>
                 <Ionicons name="person" size={50} color="rgba(255,255,255,0.3)" />
               </View>
             </View>
-            <Text style={styles.greeting}>Hello,</Text>
-            <Text style={styles.name}>{currentStudent.name}</Text>
+
+            <View style={styles.topBarRow}>
+              <View style={[styles.topBarElement, styles.leftElement]}>
+                <View style={styles.branchBadge}>
+                  <Ionicons name="location" size={14} color={theme.colors.primary} />
+                  <Text style={styles.branchText}>{branchName}</Text>
+                </View>
+              </View>
+
+              <View style={styles.greetingCenter}>
+                <Text style={styles.greeting}>Hello,</Text>
+                <Text style={styles.name}>{student.name || 'Swimmer'}</Text>
+              </View>
+
+              <View style={[styles.topBarElement, styles.rightElement]}>
+                <TouchableOpacity style={styles.notificationBtn}>
+                  <Ionicons name="notifications-outline" size={26} color={theme.colors.primary} />
+                  {unreadCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{unreadCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Quick Stats Horizontal Scroll */}
@@ -50,12 +116,12 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.statsContainer}
           >
-            <GlassCard style={styles.statCard} hasGlow={true}>
+            <GlassCard style={styles.statCard}>
               <View style={styles.statIconCircle}>
                 <Ionicons name="medal" size={20} color={theme.colors.primary} />
               </View>
               <Text style={styles.statLabel}>Current Level</Text>
-              <Text style={styles.statValue}>{currentStudent.level}</Text>
+              <Text style={styles.statValue}>{student.level || '-'}</Text>
             </GlassCard>
 
             <GlassCard style={styles.statCard}>
@@ -63,7 +129,7 @@ export default function HomeScreen() {
                 <Ionicons name="card" size={20} color={theme.colors.primary} />
               </View>
               <Text style={styles.statLabel}>Membership</Text>
-              <Text style={styles.statValue}>{currentStudent.membership}</Text>
+              <Text style={styles.statValue}>{student.packageType || '-'}</Text>
             </GlassCard>
 
             <GlassCard style={styles.statCard}>
@@ -71,7 +137,7 @@ export default function HomeScreen() {
                 <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
               </View>
               <Text style={styles.statLabel}>Attendance</Text>
-              <Text style={styles.statValue}>{currentStudent.attendance.attended}/{currentStudent.attendance.totalClasses}</Text>
+              <Text style={styles.statValue}>{attendance.attended}/{attendance.totalClasses}</Text>
             </GlassCard>
           </ScrollView>
 
@@ -83,22 +149,30 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <GlassCard style={styles.classCard} hasGlow={true}>
-            <View style={styles.classDateBox}>
-              <Text style={styles.classMonth}>FEB</Text>
-              <Text style={styles.classDay}>24</Text>
-            </View>
-            <View style={styles.classInfo}>
-              <Text style={styles.classTitle}>{currentStudent.level} Swimming Class</Text>
-              <View style={styles.classDetRow}>
-                <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
-                <Text style={styles.classDetText}>{currentStudent.schedule.time}</Text>
-              </View>
-              <View style={styles.classDetRow}>
-                <Ionicons name="person-outline" size={16} color={theme.colors.primary} />
-                <Text style={styles.classDetText}>Coach Ahmed</Text>
-              </View>
-            </View>
+          <GlassCard style={styles.classCard}>
+            {student.nextClass ? (
+                <>
+                <View style={styles.classDateBox}>
+                  <Text style={styles.classMonth}>{new Date(student.nextClass.schedule?.date || new Date()).toLocaleString('default', { month: 'short' }).toUpperCase()}</Text>
+                  <Text style={styles.classDay}>{new Date(student.nextClass.schedule?.date || new Date()).getDate()}</Text>
+                </View>
+                <View style={styles.classInfo}>
+                  <Text style={styles.classTitle}>{student.level} Swimming Class</Text>
+                  <View style={styles.classDetRow}>
+                    <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
+                    <Text style={styles.classDetText}>{student.nextClass.timeSlot}</Text>
+                  </View>
+                  <View style={styles.classDetRow}>
+                    <Ionicons name="person-outline" size={16} color={theme.colors.primary} />
+                    <Text style={styles.classDetText}>Coach {student.nextClass.schedule?.coach?.name || 'TBD'}</Text>
+                  </View>
+                </View>
+                </>
+            ) : (
+                <View style={[styles.classInfo, { alignItems: 'center', paddingVertical: 10 }]}>
+                  <Text style={[styles.classTitle, { marginBottom: 0, opacity: 0.7 }]}>No upcoming classes scheduled</Text>
+                </View>
+            )}
           </GlassCard>
 
           {/* Recent Notifications */}
@@ -107,20 +181,25 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.notificationList}>
-            {notifications.slice(0, 2).map((notif, index) => (
+            {notifications.length === 0 ? (
+                <Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 10 }}>No new notifications</Text>
+            ) : notifications.slice(0, 2).map((notif, index) => (
               <GlassCard key={index} style={styles.notificationItem}>
                 <View style={styles.notifIconBox}>
                   <Ionicons
-                    name={notif.type === 'holiday' ? 'calendar' : notif.type === 'fee' ? 'card' : 'information-circle'}
+                    name={notif.type === 'Holiday' ? 'calendar' : notif.type === 'Fee' ? 'card' : 'information-circle'}
                     size={22}
                     color={theme.colors.primary}
                   />
                 </View>
                 <View style={styles.notifContent}>
-                  <Text style={styles.notifTitle}>{notif.title}</Text>
+                  <View style={styles.notifTitleRow}>
+                    <Text style={styles.notifTitle}>{notif.title || 'Notification'}</Text>
+                    <Text style={styles.notifDate}>{notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() : ''}</Text>
+                  </View>
                   <Text style={styles.notifMsg} numberOfLines={2}>{notif.message}</Text>
                 </View>
-                {!notif.read && <View style={styles.unreadDot} />}
+                {!(notif as any).read && <View style={styles.unreadDot} />}
               </GlassCard>
             ))}
           </View>
@@ -137,29 +216,47 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing.lg,
-    paddingBottom: 160, 
+    paddingBottom: 160,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  headerSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  topBarElement: {
+    position: 'absolute',
+    top: 5,
+  },
+  leftElement: {
+    left: 0,
+  },
+  rightElement: {
+    right: 0,
+  },
+  greetingCenter: {
+    alignItems: 'center',
   },
   branchBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(11, 246, 246, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(11, 246, 246, 0.25)',
+    borderWidth: 1.2,
+    borderColor: '#0bf6f6',
   },
   branchText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
-    color: theme.colors.primary,
-    marginLeft: 5,
+    fontSize: 12,
+    color: '#ffffff',
+    marginLeft: 4,
   },
   notificationBtn: {
     position: 'relative',
@@ -183,22 +280,24 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: 'Poppins_700Bold',
   },
-  profileHeader: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.xxl,
-  },
   profileImageContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    padding: 4,
-    marginBottom: theme.spacing.sm,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 1.5,
+    borderColor: '#0bf6f6',
+    padding: 2,
+    marginBottom: theme.spacing.md,
+    backgroundColor: '#00152b', // Required for Android shadowColor to be visible
+    shadowColor: '#0bf6f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 20, // High elevation creates the ambient glow on Android 9+
   },
   profileImageBorder: {
     flex: 1,
-    borderRadius: 32,
+    borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -207,13 +306,13 @@ const styles = StyleSheet.create({
   greeting: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: 2,
+    color: '#ffffff',
+    marginBottom: -2,
   },
   name: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 24,
-    color: theme.colors.textPrimary,
+    fontSize: 22,
+    color: '#ffffff',
   },
   statsContainer: {
     paddingRight: theme.spacing.lg,
@@ -225,6 +324,10 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.2,
+    borderColor: theme.colors.primary,
+    borderRadius: 16,
   },
   statIconCircle: {
     width: 32,
@@ -272,11 +375,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.xxl,
     padding: theme.spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.2,
+    borderColor: theme.colors.primary,
+    borderRadius: 16,
   },
   classDateBox: {
     backgroundColor: 'rgba(11, 246, 246, 0.12)',
-    borderRadius: 15,
+    borderRadius: 12,
     padding: theme.spacing.sm,
     alignItems: 'center',
     minWidth: 65,
@@ -321,28 +427,41 @@ const styles = StyleSheet.create({
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
   notifIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(11, 246, 246, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
     borderWidth: 1,
     borderColor: 'rgba(11, 246, 246, 0.15)',
   },
   notifContent: {
     flex: 1,
   },
+  notifTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   notifTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    color: theme.colors.textPrimary,
-    marginBottom: 1,
+    fontSize: 15,
+    color: '#ffffff',
+  },
+  notifDate: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    color: '#ffffff',
   },
   notifMsg: {
     fontFamily: 'Poppins_400Regular',
@@ -357,7 +476,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     marginLeft: theme.spacing.xs,
     shadowColor: theme.colors.primary,
-    shadowRadius: 3,
-    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    shadowOpacity: 0.8,
+    elevation: 8,
   }
 });

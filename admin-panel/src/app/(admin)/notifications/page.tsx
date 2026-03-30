@@ -24,14 +24,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Mock History Data
-const notificationHistory = [
-    { id: "NT-101", title: "Eid Holiday Announcement", type: "Holiday", audience: "All Students", date: "2026-02-23 10:00 AM", status: "Sent", reach: 245 },
-    { id: "NT-102", title: "Pending Fees Reminder", type: "Reminder", audience: "Pending Fees (24)", date: "2026-02-20 09:15 AM", status: "Sent", reach: 24 },
-    { id: "NT-103", title: "Coach Substitution - K2 Level", type: "Class Update", audience: "Dubai - K2", date: "2026-02-18 03:45 PM", status: "Sent", reach: 12 },
-    { id: "NT-104", title: "Summer Camp Early Bird Offer", type: "Offer", audience: "All Students", date: "2026-02-15 11:30 AM", status: "Sent", reach: 245 },
-    { id: "NT-105", title: "Assessment Results Available", type: "System", audience: "Individual", date: "2026-02-10 05:00 PM", status: "Sent", reach: 1 },
-];
+import api from "@/lib/api";
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const PREDEFINED_TEMPLATES = {
     holiday: {
@@ -53,10 +48,60 @@ const PREDEFINED_TEMPLATES = {
 };
 
 export default function NotificationsPage() {
+    const { user } = useAuth();
     const [activeTemplate, setActiveTemplate] = useState<keyof typeof PREDEFINED_TEMPLATES>("custom");
     const [messageTitle, setMessageTitle] = useState("");
     const [messageBody, setMessageBody] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const [branches, setBranches] = useState<any[]>([]);
+    const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [targetType, setTargetType] = useState("all");
+    const [selectedBranch, setSelectedBranch] = useState("all");
+    const [selectedLevel, setSelectedLevel] = useState("all");
+    const [selectedStudentId, setSelectedStudentId] = useState("all");
+
+    const fetchData = async () => {
+        try {
+            const [branchRes, studRes] = await Promise.all([
+                api.get('/branches'),
+                api.get('/students?limit=1000')
+            ]);
+            setBranches(branchRes.data.data.results || branchRes.data.data || []);
+            setAllStudents(studRes.data.data.results || studRes.data.data || []);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchHistory = async () => {
+        setIsLoading(true);
+        try {
+            const res = await api.get('/notifications');
+            if (res.data.success) {
+                const results = res.data.data.results || res.data.data;
+                const mapped = results.map((n: any) => ({
+                    id: n.id,
+                    title: n.title || "Notification",
+                    type: n.type || "System",
+                    audience: n.sentTo === 'ALL' ? 'All Students' : (n.sentTo === 'BRANCH' ? 'Branch Group' : 'Individual'), 
+                    date: new Date(n.createdAt).toLocaleString(),
+                    status: "Sent",
+                    reach: 1
+                }));
+                setHistory(mapped);
+            }
+        } catch (error) {
+            console.error("Failed to fetch notification history", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+        fetchData();
+    }, []);
 
     // Handlers
     const handleTemplateChange = (val: string) => {
@@ -66,7 +111,7 @@ export default function NotificationsPage() {
         setMessageBody(PREDEFINED_TEMPLATES[key].message);
     };
 
-    const handleSendNotification = (e: React.FormEvent) => {
+    const handleSendNotification = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!messageTitle || !messageBody) {
             toast.error("Please provide both title and message");
@@ -74,14 +119,34 @@ export default function NotificationsPage() {
         }
 
         setIsSending(true);
-        // Mock sending process
-        setTimeout(() => {
+        try {
+            const payload: any = {
+                title: messageTitle,
+                message: messageBody,
+                type: 'GENERAL',
+                sentTo: 'ALL',
+            };
+
+            if (selectedStudentId !== 'all') {
+                payload.sentTo = 'INDIVIDUAL';
+                payload.targetId = selectedStudentId;
+            } else if (selectedBranch !== 'all') {
+                payload.sentTo = 'BRANCH';
+                payload.branchId = selectedBranch;
+            }
+
+            await api.post('/notifications', payload);
             toast.success("Broadcast sent successfully to selected audience");
-            setIsSending(false);
             setMessageTitle("");
             setMessageBody("");
             setActiveTemplate("custom");
-        }, 1500);
+            setSelectedStudentId("all");
+            fetchHistory();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to send broadcast");
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
@@ -131,7 +196,7 @@ export default function NotificationsPage() {
                                                 <Label htmlFor="aud-all" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-muted hover:text-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer">
                                                     <Users className="mb-2 h-6 w-6" />
                                                     <span className="font-bold">All Students</span>
-                                                    <span className="text-xs text-muted-foreground font-medium mt-1">~245 Users across branches</span>
+                                                    <span className="text-xs text-muted-foreground font-medium mt-1">{allStudents.length} Students across {branches.length} branch{branches.length !== 1 ? 'es' : ''}</span>
                                                 </Label>
                                             </div>
                                             <div>
@@ -145,26 +210,35 @@ export default function NotificationsPage() {
                                         </RadioGroup>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                                            <Select>
-                                                <SelectTrigger><SelectValue placeholder="Filter by Branch" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="dubai">Dubai</SelectItem>
-                                                    <SelectItem value="sharjah">Sharjah</SelectItem>
-                                                    <SelectItem value="ad">Abu Dhabi</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <Select>
+                                            {user?.role === 'SUPER_ADMIN' && (
+                                                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                                                    <SelectTrigger><SelectValue placeholder="Filter by Branch" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="all">All Branches</SelectItem>
+                                                        {branches.map(b => (
+                                                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                            <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                                                 <SelectTrigger><SelectValue placeholder="Filter by Level" /></SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="all">All Levels</SelectItem>
                                                     <SelectItem value="t1">Toddler (T1-T3)</SelectItem>
                                                     <SelectItem value="k1">Kids (K1-K8)</SelectItem>
                                                     <SelectItem value="a1">Adults (A1-A8)</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <Select>
+                                            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
                                                 <SelectTrigger><SelectValue placeholder="Specific Student..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="demo">Ahmed Ziad (NSM-001)</SelectItem>
+                                                <SelectContent className="max-h-[300px]">
+                                                    <SelectItem value="all">No Specific Student</SelectItem>
+                                                    {allStudents.filter(s => selectedBranch === 'all' || s.branchId === selectedBranch).map(student => (
+                                                        <SelectItem key={student.id} value={student.id}>
+                                                            {student.name} ({student.studentId})
+                                                        </SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -284,7 +358,11 @@ export default function NotificationsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {notificationHistory.map((log) => (
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-10 font-medium text-muted-foreground">Loading history logs...</TableCell>
+                                    </TableRow>
+                                ) : history.map((log) => (
                                     <TableRow key={log.id} className="hover:bg-muted/30 border-border/50">
                                         <TableCell className="font-medium text-muted-foreground">{log.id}</TableCell>
                                         <TableCell className="text-sm">{log.date}</TableCell>

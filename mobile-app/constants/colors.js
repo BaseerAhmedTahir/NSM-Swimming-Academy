@@ -1,10 +1,13 @@
 export const colors = {
   primary: '#0bf6f6', 
   primaryDark: '#08d9d9', 
+  primary20: 'rgba(11, 246, 246, 0.2)',
   secondary: '#001e3f', 
   background: '#001e3f',
+  surface: '#2d3a48',
+  surface80: 'rgba(45, 58, 72, 0.8)',
   card: 'rgba(0, 30, 63, 0.7)',
-  inputBg: 'rgba(255, 255, 255, 0.05)',
+  inputBg: 'rgba(45, 58, 72, 0.8)',
   textPrimary: '#FFFFFF',
   textSecondary: '#a0aab2',
   accent: '#0bf6f6',
@@ -13,4 +16,5 @@ export const colors = {
   warning: '#FFC107',
   inactiveTab: '#a0aab2',
   activeTab: '#0bf6f6',
+  tabBg: 'rgba(0, 30, 63, 0.9)',
 };

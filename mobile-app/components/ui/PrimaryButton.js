@@ -13,20 +13,24 @@ export default function PrimaryButton({ title, onPress, style, textStyle }) {
 const styles = StyleSheet.create({
     button: {
         backgroundColor: theme.colors.primary,
-        borderRadius: theme.radius.md,
-        paddingVertical: theme.spacing.lg,
+        borderRadius: 22, // Slicker rounded corners
+        paddingVertical: 18,
         paddingHorizontal: theme.spacing.xl,
         alignItems: 'center',
         justifyContent: 'center',
+        // Extreme Modern Glow
+        borderWidth: 1,
+        borderColor: '#ffffff55',
         shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+        elevation: 15,
     },
     text: {
-        color: '#000000',
-        fontFamily: 'Nunito_800ExtraBold',
+        color: '#002a2a', // Deep contrast text for aquatic button
+        fontFamily: 'Poppins_700Bold',
         fontSize: 18,
+        letterSpacing: 0.5,
     }
 });
