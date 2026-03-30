@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd backend && npm install && npx prisma generate && npm run build"
+
+[deploy]
+startCommand = "cd backend && npm run start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "backend"
