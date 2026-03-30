@@ -16,8 +16,8 @@ RUN ./node_modules/.bin/prisma generate
 # Compile TypeScript
 RUN ./node_modules/.bin/tsc --project /app/tsconfig.json 2>&1
 
-# Verify the real entry point exists
-RUN ls /app/dist/index.js
+# Verify output
+RUN ls -la /app/dist/ && ls /app/dist/index.js
 
 # ── Production stage ──────────────────────────────────────────
 FROM node:20-alpine AS production
