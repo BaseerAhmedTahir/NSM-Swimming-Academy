@@ -1,8 +1,6 @@
-[settings]
-rootDirectory = "backend"
-
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "on_failure"
