@@ -2,16 +2,19 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy backend package files first for better layer caching
+# Copy package files first for layer caching
 COPY backend/package*.json ./
+
+# Copy prisma schema
+COPY backend/prisma ./prisma
+
+# Copy rest of source (node_modules excluded via .dockerignore)
+COPY backend/ .
+
+# Install dependencies on Linux (correct platform binaries)
 RUN npm install
 
-# Copy prisma schema and generate client
-COPY backend/prisma ./prisma
-RUN npx prisma generate
-
-# Copy rest of backend source and build
-COPY backend/ .
+# Generate Prisma client with correct Linux binaries, then compile TS
 RUN npm run build
 
 EXPOSE 5000
