@@ -3,7 +3,7 @@ import { prisma } from '../../config/database';
 import { adminLoginSchema, studentRegisterSchema, studentLoginSchema, resetPasswordSchema, forgotPasswordSchema } from './auth.schema';
 import { UnauthorizedError, NotFoundError, ConflictError, ValidationError, ForbiddenError } from '../../utils/errors';
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { generateTokens } from '../../utils/jwt';
 import { generateStudentId } from '../../utils/generateId';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../../utils/email';
@@ -175,7 +175,7 @@ export const forgotPassword = async (email: string) => {
         return; 
     }
 
-    const resetToken = uuidv4();
+    const resetToken = randomUUID();
     const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
 
     await prisma.passwordResetToken.create({

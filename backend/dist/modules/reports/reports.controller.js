@@ -40,7 +40,12 @@ const getReport = async (req, res, next) => {
     try {
         const type = req.params.type; // e.g. 'revenue', 'attendance', 'students'
         const format = req.query.format || 'JSON';
-        const data = await reportsService.generateReportData(type, req.query);
+        // Merge scopedBranchId into queryArgs so the service correctly scopes data
+        const queryArgs = { ...req.query };
+        if (req.scopedBranchId) {
+            queryArgs.branchId = req.scopedBranchId;
+        }
+        const data = await reportsService.generateReportData(type, queryArgs);
         if (format === 'PDF') {
             const doc = await reportsService.createPdfReportStream(type, data);
             res.setHeader('Content-Type', 'application/pdf');

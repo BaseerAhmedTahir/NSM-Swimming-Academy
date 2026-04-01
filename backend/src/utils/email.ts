@@ -19,13 +19,14 @@ export interface EmailResult {
 
 export const sendEmail = async (to: string, subject: string, html: string): Promise<EmailResult> => {
     console.log(`✉️ [Email System] Attempting delivery to: ${to}`);
+    const provider = env.EMAIL_PROVIDER || 'gmail';
 
-    // 1. Try Resend API if key is provided
-    if (env.RESEND_API_KEY && env.RESEND_API_KEY !== 'undefined' && env.RESEND_API_KEY.length > 5) {
+    // 1. Try Resend if specifically selected
+    if (provider === 'resend' && env.RESEND_API_KEY && env.RESEND_API_KEY !== 'undefined') {
         console.log('🚀 [Email System] Route: Resend API');
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
             const response = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -54,21 +55,18 @@ export const sendEmail = async (to: string, subject: string, html: string): Prom
                 return { success: false, error: `Resend API Error: ${errorMsg}`, provider: 'resend' };
             }
         } catch (error: any) {
-            const errorMsg = error.name === 'AbortError' ? 'Connection timed out' : error.message;
-            console.error('❌ [Email System] Resend Connection Error:', errorMsg);
-            // If Resend connection fails, we don't fallback here to keep it predictable, 
-            // or you can choose to fallback to SMTP if configured
+            console.error('❌ [Email System] Resend Connection Error:', error.message);
         }
     }
 
-    // 2. Fallback to SMTP
+    // 2. Default/Fallback to SMTP (Gmail)
     if (!env.SMTP_USER || !env.SMTP_PASS) {
-        const warning = '⚠️ [Email System] Delivery Failed: No valid Resend API Key and no SMTP credentials in .env';
+        const warning = '⚠️ [Email System] Configuration Failed: Missing SMTP credentials in .env';
         console.warn(warning);
-        return { success: false, error: 'Email configuration missing (Resend API Key or SMTP credentials)' };
+        return { success: false, error: 'Email configuration missing' };
     }
 
-    console.log('🔗 [Email System] Route: SMTP');
+    console.log(`🔗 [Email System] Route: SMTP (${env.SMTP_HOST})`);
     try {
         const info = await transporter.sendMail({
             from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,

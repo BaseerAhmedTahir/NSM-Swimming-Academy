@@ -6,7 +6,7 @@ exports.createCoachSchema = zod_1.z.object({
     body: zod_1.z.object({
         name: zod_1.z.string().min(2, 'Name is required'),
         email: zod_1.z.string().email('Invalid email address'),
-        phone: zod_1.z.string().min(8, 'Phone number required'),
+        phone: zod_1.z.string().min(8, 'Phone number must be at least 8 digits'),
         branchId: zod_1.z.string().uuid('Invalid branch ID').optional()
         // ^ Optional because it will be auto-injected by branchScope if admin is STAFF
     })

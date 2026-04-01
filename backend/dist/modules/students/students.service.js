@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getStudentMembershipHistory = exports.getStudentAttendance = exports.getStudentPayments = exports.deleteStudent = exports.cancelStudent = exports.renewStudent = exports.activateStudent = exports.updateStudent = exports.createStudent = exports.getStudentById = exports.getAllStudents = exports.searchStudents = void 0;
+exports.getExpiredHistory = exports.getStudentMembershipHistory = exports.getStudentAttendance = exports.getStudentPayments = exports.deleteStudent = exports.cancelStudent = exports.renewStudent = exports.activateStudent = exports.updateStudent = exports.createStudent = exports.getStudentById = exports.getAllStudents = exports.searchStudents = void 0;
 const database_1 = require("../../config/database");
 const pagination_1 = require("../../utils/pagination");
 const generateId_1 = require("../../utils/generateId");
@@ -15,33 +15,29 @@ const getPackageDetails = async (type, txClient = database_1.prisma) => {
     const setting = await txClient.setting.findUnique({ where: { key: settingKey } });
     if (setting) {
         try {
-            return JSON.parse(setting.value); // Expected: { price: number, classes: number, durationMonths: number }
+            const parsed = JSON.parse(setting.value);
+            // Ensure all required fields exist; durationMonths defaults to 1 if not set
+            return {
+                price: Number(parsed.price) || 0,
+                classes: Number(parsed.classes) || 0,
+                durationMonths: Number(parsed.durationMonths) || 1,
+            };
         }
         catch (e) {
-            console.warn(`Invalid setting JSON for ${settingKey}, falling back to defaults`);
+            console.warn(`Invalid JSON for ${settingKey}, using hardcoded defaults`);
         }
+    }
+    else {
+        console.warn(`No DB setting found for key "${settingKey}" — using hardcoded defaults`);
     }
     const defaultPrices = {
         BASIC: { price: 500, classes: 8, durationMonths: 1 },
         SILVER: { price: 800, classes: 12, durationMonths: 1 },
         GOLD: { price: 1200, classes: 24, durationMonths: 3 },
         PLATINUM: { price: 1500, classes: 36, durationMonths: 6 },
-        INDIVIDUAL: { price: 2000, classes: 10, durationMonths: 1 }
+        INDIVIDUAL: { price: 2000, classes: 10, durationMonths: 1 },
     };
-    let details = defaultPrices[type] || defaultPrices.BASIC;
-    if (setting) {
-        try {
-            details = JSON.parse(setting.value);
-        }
-        catch (e) {
-            console.warn(`Invalid setting JSON for ${settingKey}, falling back to defaults`);
-        }
-    }
-    // Force hard-correction for BASIC package to ensure it's always 500 regardless of DB
-    if (type === 'BASIC') {
-        details.price = 500;
-    }
-    return details;
+    return defaultPrices[type] || { price: 0, classes: 0, durationMonths: 1 };
 };
 const searchStudents = async (query, branchId) => {
     const where = { status: 'ACTIVE' };
@@ -98,8 +94,14 @@ const getAllStudents = async (queryArgs, branchId) => {
                 id: true, studentId: true, name: true, email: true, phone: true,
                 age: true, gender: true, level: true, category: true, packageType: true,
                 status: true, membershipStartDate: true, membershipExpiryDate: true,
+                trn: true, discount: true, renewalCount: true,
                 branchId: true, branch: { select: { name: true } },
                 payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+                membershipHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: { totalClasses: true, classesUsed: true, status: true }
+                },
                 createdAt: true
             }
         })
@@ -142,6 +144,7 @@ const createStudent = async (data, adminBranchId) => {
             }
         }
         const studentId = (0, generateId_1.generateStudentId)(branch.code, nextSequence);
+        const tempPassword = data.password; // Capture plaintext before hashing
         const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
         const packageInfo = await getPackageDetails(data.packageType, tx);
         const amount = packageInfo.price;
@@ -201,8 +204,8 @@ const createStudent = async (data, adminBranchId) => {
                 status: 'ACTIVE'
             }
         });
-        // 3. Send Welcome Email
-        const emailResult = await (0, email_1.sendWelcomeEmail)(student.email, student.name, studentId).catch(err => {
+        // 3. Send Credentials Email with temp password so student can log in
+        const emailResult = await (0, email_1.sendCredentialsEmail)(student.email, student.name, studentId, tempPassword).catch(err => {
             console.error('Email system crash:', err);
             return { success: false, error: err.message };
         });
@@ -304,6 +307,25 @@ const updateStudent = async (id, branchId, data) => {
                 });
             }
         }
+        // ── Update MembershipHistory when packageType changes ──────────────
+        if (data.packageType && data.packageType !== existingStudent.packageType) {
+            const newPkgInfo = await getPackageDetails(data.packageType, tx);
+            // Find the latest membership record for this student (any status) and update totalClasses
+            const latestMembership = await tx.membershipHistory.findFirst({
+                where: { studentId: id },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true }
+            });
+            if (latestMembership) {
+                await tx.membershipHistory.update({
+                    where: { id: latestMembership.id },
+                    data: {
+                        packageType: data.packageType,
+                        totalClasses: newPkgInfo.classes,
+                    }
+                });
+            }
+        }
         const { password: _, ...studentData } = student;
         return studentData;
     });
@@ -354,14 +376,17 @@ const renewStudent = async (id, branchId, data) => {
         // Generate Payment
         const paymentCount = await tx.payment.count({ where: { branchId: student.branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } } });
         const invoiceNumber = (0, generateId_1.generateInvoiceNumber)(branch.code, paymentCount + 1);
+        const isPaid = data.paymentStatus === 'PAID';
+        const paidAmount = isPaid ? totalAmount : 0;
+        const pendingAmount = isPaid ? 0 : totalAmount;
         await tx.payment.create({
             data: {
                 invoiceNumber, studentId: student.id, branchId: student.branchId,
                 amount, discount: data.discount || 0,
-                totalAmount, paidAmount: totalAmount,
-                pendingAmount: 0,
+                totalAmount, paidAmount,
+                pendingAmount,
                 paymentMode: data.paymentMode, paymentDate: new Date(),
-                status: 'PAID', packageType: data.packageType, registrationType: 'RENEW'
+                status: data.paymentStatus || 'PENDING', packageType: data.packageType, registrationType: 'RENEW'
             }
         });
         // Mark old membership history as EXPIRED/COMPLETED and create new
@@ -460,3 +485,30 @@ const getStudentMembershipHistory = async (id, branchId) => {
     });
 };
 exports.getStudentMembershipHistory = getStudentMembershipHistory;
+// All expired membership records for the expired history screen:
+// - COMPLETED/EXPIRED history = students who expired and have since been renewed (permanent history)
+// - ACTIVE history for EXPIRED students = newly expired, not yet renewed (current expired screen)
+const getExpiredHistory = async (branchId) => {
+    const studentWhere = branchId ? { branchId } : {};
+    return await database_1.prisma.membershipHistory.findMany({
+        where: {
+            OR: [
+                // Historically expired (already renewed — status COMPLETED)
+                { status: { in: ['COMPLETED', 'EXPIRED'] }, student: studentWhere },
+                // Currently expired but not yet renewed (student.status = EXPIRED, history still ACTIVE)
+                { status: 'ACTIVE', student: { ...studentWhere, status: 'EXPIRED' } }
+            ]
+        },
+        orderBy: { expiryDate: 'desc' },
+        include: {
+            student: {
+                select: {
+                    id: true, studentId: true, name: true, phone: true,
+                    status: true, // include so frontend can show if currently expired or already renewed
+                    branch: { select: { id: true, name: true } }
+                }
+            }
+        }
+    });
+};
+exports.getExpiredHistory = getExpiredHistory;

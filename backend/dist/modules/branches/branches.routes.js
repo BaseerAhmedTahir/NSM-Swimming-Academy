@@ -43,6 +43,9 @@ const router = (0, express_1.Router)();
 // Public route for login page dropping
 router.get('/', branchesController.getAllBranches);
 // Protected routes
+router.post('/', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(branches_schema_1.createBranchSchema), branchesController.createBranch);
 router.get('/:id', auth_1.authenticate, branchesController.getBranchById);
 router.put('/:id', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(branches_schema_1.updateBranchSchema), branchesController.updateBranch);
+router.post('/:id/admin', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(branches_schema_1.branchAdminSchema), branchesController.upsertBranchAdmin);
+router.delete('/:id', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN']), branchesController.deleteBranch);
 exports.default = router;

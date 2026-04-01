@@ -146,7 +146,16 @@ export default function SettingsPage() {
                     };
                 })
             ];
-            await api.post('/settings/bulk', { settings: settingsPayload });
+            await Promise.all([
+                api.post('/settings/bulk', { settings: settingsPayload }),
+                ...branchesList.map(branch => {
+                    const phone = (document.getElementById(`phone-${branch.id}`) as HTMLInputElement)?.value || branch.phone;
+                    const email = (document.getElementById(`email-${branch.id}`) as HTMLInputElement)?.value || branch.email;
+                    const address = (document.getElementById(`address-${branch.id}`) as HTMLInputElement)?.value || branch.address;
+                    const trn = (document.getElementById(`trn-${branch.id}`) as HTMLInputElement)?.value || branch.trn;
+                    return api.put(`/branches/${branch.id}`, { phone, email, address, trn, permissions: branch.permissions });
+                })
+            ]);
             toast.success("Settings saved successfully");
         } catch (err: any) {
              toast.error(err.response?.data?.message || "Failed to save settings");
@@ -316,9 +325,9 @@ export default function SettingsPage() {
                                 <h3 className="text-lg font-black text-foreground">Academy Branches</h3>
                                 <p className="text-sm text-muted-foreground">Manage location details and contact information.</p>
                             </div>
-                            <Button variant="outline" size="sm" className="font-bold border-border/50 bg-white" onClick={() => setIsAddBranchModalOpen(true)}>
+                            {/* <Button variant="outline" size="sm" className="font-bold border-border/50 bg-white" onClick={() => setIsAddBranchModalOpen(true)}>
                                 <Plus className="w-4 h-4 mr-2" /> Add Branch
-                            </Button>
+                            </Button> */}
                         </div>
 
                         <div className="p-6 grid gap-6">
@@ -329,10 +338,10 @@ export default function SettingsPage() {
                                             <h4 className="font-bold text-foreground text-lg">{branch.name}</h4>
                                             {branch.name.includes("Dubai") && <span className="text-[10px] font-black uppercase bg-primary text-white px-1.5 rounded">HQ</span>}
                                         </div>
-                                        <div className="flex items-center gap-2 mt-2">
+                                        {/* <div className="flex items-center gap-2 mt-2">
                                             <Label className="text-xs text-muted-foreground">Active Hub</Label>
                                             <Switch defaultChecked={branch.active} />
-                                        </div>
+                                        </div> */}
                                     </div>
 
                                     <div className="lg:col-span-2 space-y-3">
@@ -433,7 +442,7 @@ export default function SettingsPage() {
                                         >
                                             {isSaving ? "Saving..." : "Save Changes"}
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-error/10 hover:text-error transition-colors" onClick={() => handleDeleteBranch(branch.id, branch.name)}><Trash2 className="w-4 h-4" /></Button>
+                                        {/* <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-error/10 hover:text-error transition-colors" onClick={() => handleDeleteBranch(branch.id, branch.name)}><Trash2 className="w-4 h-4" /></Button> */}
                                     </div>
                                 </div>
                             ))}

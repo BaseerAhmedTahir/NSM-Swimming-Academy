@@ -33,11 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getStudentMembershipHistory = exports.getStudentAttendance = exports.getStudentPayments = exports.renewStudent = exports.activateStudent = exports.cancelStudent = exports.deleteStudent = exports.updateStudent = exports.createStudent = exports.getStudentById = exports.getAllStudents = exports.searchStudents = void 0;
+exports.getExpiredHistory = exports.getStudentMembershipHistory = exports.getStudentAttendance = exports.getStudentPayments = exports.renewStudent = exports.activateStudent = exports.cancelStudent = exports.deleteStudent = exports.updateStudent = exports.createStudent = exports.getStudentById = exports.getAllStudents = exports.searchStudents = void 0;
 const studentsService = __importStar(require("./students.service"));
 const response_1 = require("../../utils/response");
 const getBranchId = (req) => {
-    return req.query.branchId || undefined;
+    return req.scopedBranchId || undefined;
 };
 const searchStudents = async (req, res, next) => {
     try {
@@ -75,7 +75,10 @@ const getStudentById = async (req, res, next) => {
 exports.getStudentById = getStudentById;
 const createStudent = async (req, res, next) => {
     try {
-        const adminBranchId = req.user.branchId;
+        // scopedBranchId is set by branchScope middleware.
+        // For STAFF it is locked to their branch (ignores any body.branchId).
+        // For SUPER_ADMIN it comes from the request body or query.
+        const adminBranchId = req.scopedBranchId || req.body.branchId || req.user.branchId;
         const student = await studentsService.createStudent(req.body, adminBranchId);
         return (0, response_1.successResponse)({ res, data: student, statusCode: 201, message: 'Student created and activated successfully' });
     }
@@ -173,3 +176,14 @@ const getStudentMembershipHistory = async (req, res, next) => {
     }
 };
 exports.getStudentMembershipHistory = getStudentMembershipHistory;
+const getExpiredHistory = async (req, res, next) => {
+    try {
+        const branchId = getBranchId(req);
+        const history = await studentsService.getExpiredHistory(branchId);
+        return (0, response_1.successResponse)({ res, data: history });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getExpiredHistory = getExpiredHistory;

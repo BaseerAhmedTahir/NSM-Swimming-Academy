@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateBranch = exports.getBranchById = exports.getAllBranches = void 0;
+exports.deleteBranch = exports.upsertBranchAdmin = exports.updateBranch = exports.createBranch = exports.getBranchById = exports.getAllBranches = void 0;
 const branchesService = __importStar(require("./branches.service"));
 const response_1 = require("../../utils/response");
 const getAllBranches = async (req, res, next) => {
@@ -56,6 +56,16 @@ const getBranchById = async (req, res, next) => {
     }
 };
 exports.getBranchById = getBranchById;
+const createBranch = async (req, res, next) => {
+    try {
+        const branch = await branchesService.createBranch(req.body);
+        return (0, response_1.successResponse)({ res, data: branch, message: 'Branch created successfully', statusCode: 201 });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.createBranch = createBranch;
 const updateBranch = async (req, res, next) => {
     try {
         const branch = await branchesService.updateBranch(req.params.id, req.body);
@@ -66,3 +76,23 @@ const updateBranch = async (req, res, next) => {
     }
 };
 exports.updateBranch = updateBranch;
+const upsertBranchAdmin = async (req, res, next) => {
+    try {
+        const admin = await branchesService.upsertBranchAdmin(req.params.id, req.body);
+        return (0, response_1.successResponse)({ res, data: { id: admin.id, username: admin.username, email: admin.email }, message: 'Branch Admin credentials saved successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.upsertBranchAdmin = upsertBranchAdmin;
+const deleteBranch = async (req, res, next) => {
+    try {
+        await branchesService.deleteBranch(req.params.id);
+        return (0, response_1.successResponse)({ res, message: 'Branch deactivated successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteBranch = deleteBranch;

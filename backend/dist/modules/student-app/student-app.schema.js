@@ -4,6 +4,7 @@ exports.cancelClassSchema = void 0;
 const zod_1 = require("zod");
 exports.cancelClassSchema = zod_1.z.object({
     body: zod_1.z.object({
-        scheduleSlotId: zod_1.z.string().uuid()
+        // Mobile app sends 'scheduleId' (which is the scheduleSlot.id)
+        scheduleId: zod_1.z.string().uuid()
     })
 });

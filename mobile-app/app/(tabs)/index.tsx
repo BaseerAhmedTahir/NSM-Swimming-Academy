@@ -6,6 +6,7 @@ import { theme } from '../../constants/theme';
 import AppBackground from '../../components/ui/AppBackground';
 import GlassCard from '../../components/ui/GlassCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import api from '../../lib/api';
 
 export default function HomeScreen() {
@@ -14,6 +15,7 @@ export default function HomeScreen() {
   const [attendance, setAttendance] = useState({ attended: 0, totalClasses: 0, remaining: 0 });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -98,7 +100,7 @@ export default function HomeScreen() {
               </View>
 
               <View style={[styles.topBarElement, styles.rightElement]}>
-                <TouchableOpacity style={styles.notificationBtn}>
+                <TouchableOpacity style={styles.notificationBtn} onPress={() => router.push('/notifications')}>
                   <Ionicons name="notifications-outline" size={26} color={theme.colors.primary} />
                   {unreadCount > 0 && (
                     <View style={styles.badge}>
@@ -144,7 +146,7 @@ export default function HomeScreen() {
           {/* Next Class Section */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Upcoming Classes</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/schedule')}>
               <Text style={styles.seeAll}>See Schedule</Text>
             </TouchableOpacity>
           </View>

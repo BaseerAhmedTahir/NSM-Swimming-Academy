@@ -38,7 +38,7 @@ const attendanceService = __importStar(require("./attendance.service"));
 const response_1 = require("../../utils/response");
 const getAttendanceByDate = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const dateStr = req.query.date || new Date().toISOString().split('T')[0];
         const records = await attendanceService.getAttendanceByDate(dateStr, branchId);
         return (0, response_1.successResponse)({ res, data: records });
@@ -50,7 +50,7 @@ const getAttendanceByDate = async (req, res, next) => {
 exports.getAttendanceByDate = getAttendanceByDate;
 const markAttendance = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const markedBy = req.user.id;
         const record = await attendanceService.markAttendance(req.body, branchId, markedBy);
         return (0, response_1.successResponse)({ res, data: record, statusCode: 201, message: 'Attendance marked successfully' });
@@ -62,7 +62,7 @@ const markAttendance = async (req, res, next) => {
 exports.markAttendance = markAttendance;
 const updateAttendance = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const updatedBy = req.user.id;
         const record = await attendanceService.updateAttendance(req.params.id, branchId, req.body, updatedBy);
         return (0, response_1.successResponse)({ res, data: record, message: 'Attendance updated successfully' });

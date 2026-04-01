@@ -33,9 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
+exports.markNotificationRead = exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
 const studentAppService = __importStar(require("./student-app.service"));
 const response_1 = require("../../utils/response");
+const database_1 = require("../../config/database");
 const getProfile = async (req, res, next) => {
     try {
         const data = await studentAppService.getProfile(req.user.id);
@@ -88,7 +89,8 @@ const getNotifications = async (req, res, next) => {
 exports.getNotifications = getNotifications;
 const cancelClass = async (req, res, next) => {
     try {
-        const data = await studentAppService.cancelClass(req.user.id, req.body.scheduleSlotId);
+        // Frontend sends 'scheduleId' which maps to scheduleSlot.id
+        const data = await studentAppService.cancelClass(req.user.id, req.body.scheduleId);
         return (0, response_1.successResponse)({ res, data, message: data.message });
     }
     catch (error) {
@@ -96,3 +98,18 @@ const cancelClass = async (req, res, next) => {
     }
 };
 exports.cancelClass = cancelClass;
+const markNotificationRead = async (req, res, next) => {
+    try {
+        const notificationId = String(req.params.id);
+        const studentId = String(req.user.id);
+        await database_1.prisma.studentNotification.updateMany({
+            where: { notificationId, studentId },
+            data: { isRead: true, readAt: new Date() }
+        });
+        return (0, response_1.successResponse)({ res, data: null, message: 'Marked as read' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.markNotificationRead = markNotificationRead;

@@ -38,7 +38,7 @@ const freezingsService = __importStar(require("./freezings.service"));
 const response_1 = require("../../utils/response");
 const getFreezings = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const result = await freezingsService.getFreezings(branchId, req.query);
         return (0, response_1.successResponse)({ res, data: result.data, meta: result.meta });
     }
@@ -49,7 +49,7 @@ const getFreezings = async (req, res, next) => {
 exports.getFreezings = getFreezings;
 const getFreezingById = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const record = await freezingsService.getFreezingById(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, data: record });
     }
@@ -60,7 +60,7 @@ const getFreezingById = async (req, res, next) => {
 exports.getFreezingById = getFreezingById;
 const createFreezing = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const adminId = req.user.id;
         const record = await freezingsService.createFreezing({ ...req.body, frozenBy: adminId }, branchId);
         return (0, response_1.successResponse)({ res, data: record, statusCode: 201, message: 'Account frozen successfully' });
@@ -72,7 +72,7 @@ const createFreezing = async (req, res, next) => {
 exports.createFreezing = createFreezing;
 const unfreeze = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         await freezingsService.unfreeze(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, message: 'Account unfrozen successfully' });
     }
@@ -83,7 +83,7 @@ const unfreeze = async (req, res, next) => {
 exports.unfreeze = unfreeze;
 const updateFreezing = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const record = await freezingsService.updateFreezing(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: record, message: 'Freezing record updated successfully' });
     }

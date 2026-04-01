@@ -47,12 +47,14 @@ router.use((0, rbac_1.authorize)(['SUPER_ADMIN', 'STAFF', 'students:full'])); //
 router.use(branchScope_1.branchScope);
 // Search first so it doesn't collide with /:id
 router.get('/search', studentsController.searchStudents);
+// Global expired history (must be before /:id to avoid route collision)
+router.get('/expired-history', studentsController.getExpiredHistory);
 // CRUD
 router.get('/', studentsController.getAllStudents);
 router.get('/:id', studentsController.getStudentById);
-router.post('/', (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(students_schema_1.createStudentSchema), studentsController.createStudent);
+router.post('/', (0, validate_1.validate)(students_schema_1.createStudentSchema), studentsController.createStudent);
 router.put('/:id', (0, validate_1.validate)(students_schema_1.updateStudentSchema), studentsController.updateStudent);
-router.delete('/:id', (0, rbac_1.authorize)(['SUPER_ADMIN']), studentsController.deleteStudent);
+router.delete('/:id', studentsController.deleteStudent);
 // Actions
 router.post('/:id/activate', (0, validate_1.validate)(students_schema_1.activateStudentSchema), studentsController.activateStudent);
 router.post('/:id/renew', (0, validate_1.validate)(students_schema_1.renewStudentSchema), studentsController.renewStudent);

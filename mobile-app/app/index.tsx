@@ -4,13 +4,23 @@ import { useRouter } from 'expo-router';
 import Logo from '../components/Logo';
 import AppBackground from '../components/ui/AppBackground';
 import { theme } from '../constants/theme';
+import * as storage from '../lib/storage';
 
 export default function SplashScreen() {
     const router = useRouter();
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            router.replace('/branch-selection');
+        const timer = setTimeout(async () => {
+            try {
+                const token = await storage.getItem('userToken');
+                if (token) {
+                    router.replace('/(tabs)');
+                } else {
+                    router.replace('/branch-selection');
+                }
+            } catch (err) {
+                router.replace('/branch-selection');
+            }
         }, 2000); // 2 seconds
 
         return () => clearTimeout(timer);

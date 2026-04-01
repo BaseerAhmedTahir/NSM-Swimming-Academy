@@ -75,13 +75,35 @@ export default function ScheduleScreen() {
             const raw = new Date(cls.schedule.date);
             const clsDate = toLocalDateString(new Date(raw.getUTCFullYear(), raw.getUTCMonth(), raw.getUTCDate()));
             return clsDate === selectedDate;
-        }).map(cls => ({
-            id: cls.id,
-            branch: cls.schedule.branch?.name || 'Main',
-            coach: cls.schedule.coach?.name || 'TBD',
-            time: cls.timeSlot || 'TBD',
-            status: cls.status || 'Upcoming',
-        }));
+        }).map(cls => {
+            let isPast = false;
+            try {
+                const parts = (cls.timeSlot || '0:0').split(' '); // e.g. "4:00 PM"
+                const [hStr, mStr] = parts[0].split(':');
+                let hour = parseInt(hStr) || 0;
+                const min = parseInt(mStr) || 0;
+                if (parts[1]?.toUpperCase() === 'PM' && hour !== 12) hour += 12;
+                if (parts[1]?.toUpperCase() === 'AM' && hour === 12) hour = 0;
+                
+                const clsDateObj = new Date(cls.schedule.date);
+                clsDateObj.setUTCHours(hour, min, 0, 0);
+                if (clsDateObj.getTime() < Date.now()) isPast = true;
+            } catch { /* ignore */ }
+
+            let displayStatus = cls.status || 'Upcoming';
+            if (isPast && displayStatus === 'Upcoming') {
+                displayStatus = 'Completed';
+            }
+
+            return {
+                id: cls.id,
+                branch: cls.schedule.branch?.name || 'Main',
+                coach: cls.schedule.coach?.name || 'TBD',
+                time: cls.timeSlot || 'TBD',
+                status: displayStatus,
+                isPast: isPast
+            };
+        });
     };
 
     const handleCancelPress = (cls: any) => {
@@ -257,7 +279,7 @@ export default function ScheduleScreen() {
                                         </View>
                                         <View style={styles.classInfoMain}>
                                             <Text style={styles.classTitle}>Swim Class</Text>
-                                            <View style={styles.upcomingBadge}>
+                                            <View style={[styles.upcomingBadge, cls.isPast && { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)' }]}>
                                                 <Text style={styles.statusText}>{cls.status}</Text>
                                             </View>
                                             <View style={styles.classDetRow}>
@@ -286,17 +308,19 @@ export default function ScheduleScreen() {
                                         </View>
                                     </View>
 
-                                    <TouchableOpacity
-                                        style={[styles.cancelBtn, cancellingId === cls.id && styles.cancelBtnDisabled]}
-                                        onPress={() => handleCancelPress(cls)}
-                                        disabled={cancellingId === cls.id}
-                                    >
-                                        {cancellingId === cls.id ? (
-                                            <ActivityIndicator size="small" color={theme.colors.error} />
-                                        ) : (
-                                            <Text style={styles.cancelText}>Cancel Booking</Text>
-                                        )}
-                                    </TouchableOpacity>
+                                    {(!cls.isPast && cls.status === 'Upcoming') && (
+                                        <TouchableOpacity
+                                            style={[styles.cancelBtn, cancellingId === cls.id && styles.cancelBtnDisabled]}
+                                            onPress={() => handleCancelPress(cls)}
+                                            disabled={cancellingId === cls.id}
+                                        >
+                                            {cancellingId === cls.id ? (
+                                                <ActivityIndicator size="small" color={theme.colors.error} />
+                                            ) : (
+                                                <Text style={styles.cancelText}>Cancel Booking</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
                                 </GlassCard>
                             ))}
                         </View>

@@ -38,7 +38,7 @@ const cancellationsService = __importStar(require("./cancellations.service"));
 const response_1 = require("../../utils/response");
 const getCancellations = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const result = await cancellationsService.getCancellations(branchId, req.query);
         return (0, response_1.successResponse)({ res, data: result.data, meta: result.meta });
     }
@@ -49,7 +49,7 @@ const getCancellations = async (req, res, next) => {
 exports.getCancellations = getCancellations;
 const getCancellationById = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const record = await cancellationsService.getCancellationById(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, data: record });
     }
@@ -60,7 +60,7 @@ const getCancellationById = async (req, res, next) => {
 exports.getCancellationById = getCancellationById;
 const createCancellation = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const record = await cancellationsService.createCancellation(req.body, branchId);
         return (0, response_1.successResponse)({ res, data: record, statusCode: 201, message: 'Student membership cancelled successfully' });
     }
@@ -71,7 +71,7 @@ const createCancellation = async (req, res, next) => {
 exports.createCancellation = createCancellation;
 const updateCancellation = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const record = await cancellationsService.updateCancellation(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: record, message: 'Cancellation record updated successfully' });
     }

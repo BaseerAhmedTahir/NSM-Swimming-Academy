@@ -38,8 +38,7 @@ const coachesService = __importStar(require("./coaches.service"));
 const response_1 = require("../../utils/response");
 const getAllCoaches = async (req, res, next) => {
     try {
-        // branchId might be auto-injected into req.query by branchScope middleware
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const result = await coachesService.getAllCoaches(branchId, req.query);
         return (0, response_1.successResponse)({ res, data: result.data, meta: result.meta });
     }
@@ -50,7 +49,7 @@ const getAllCoaches = async (req, res, next) => {
 exports.getAllCoaches = getAllCoaches;
 const getCoachById = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const coach = await coachesService.getCoachById(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, data: coach });
     }
@@ -61,7 +60,7 @@ const getCoachById = async (req, res, next) => {
 exports.getCoachById = getCoachById;
 const createCoach = async (req, res, next) => {
     try {
-        const adminBranchId = req.user.branchId;
+        const adminBranchId = req.scopedBranchId || req.user.branchId;
         const coach = await coachesService.createCoach(req.body, adminBranchId);
         return (0, response_1.successResponse)({ res, data: coach, statusCode: 201, message: 'Coach created successfully' });
     }
@@ -72,7 +71,7 @@ const createCoach = async (req, res, next) => {
 exports.createCoach = createCoach;
 const updateCoach = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const coach = await coachesService.updateCoach(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: coach, message: 'Coach updated successfully' });
     }
@@ -83,7 +82,7 @@ const updateCoach = async (req, res, next) => {
 exports.updateCoach = updateCoach;
 const deleteCoach = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         await coachesService.deleteCoach(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, message: 'Coach deleted successfully' });
     }
@@ -94,7 +93,7 @@ const deleteCoach = async (req, res, next) => {
 exports.deleteCoach = deleteCoach;
 const assignStudents = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         await coachesService.assignStudents(req.params.id, branchId, req.body.studentIds);
         return (0, response_1.successResponse)({ res, message: 'Students assigned successfully' });
     }
@@ -105,7 +104,7 @@ const assignStudents = async (req, res, next) => {
 exports.assignStudents = assignStudents;
 const unassignStudent = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         await coachesService.unassignStudent(req.params.id, req.params.studentId, branchId);
         return (0, response_1.successResponse)({ res, message: 'Student unassigned successfully' });
     }

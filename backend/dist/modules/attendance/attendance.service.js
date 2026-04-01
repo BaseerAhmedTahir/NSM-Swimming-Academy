@@ -10,7 +10,7 @@ const getAttendanceByDate = async (dateStr, branchId) => {
     return await database_1.prisma.attendanceRecord.findMany({
         where: {
             date: targetDate,
-            student: { branchId }
+            ...(branchId ? { student: { branchId } } : {})
         },
         include: {
             student: { select: { id: true, name: true, studentId: true } },
@@ -82,7 +82,7 @@ const markAttendance = async (data, branchId, markedBy) => {
 exports.markAttendance = markAttendance;
 const updateAttendance = async (id, branchId, data, updatedBy) => {
     const existing = await database_1.prisma.attendanceRecord.findFirstOrThrow({
-        where: { id, student: { branchId } },
+        where: { id, ...(branchId ? { student: { branchId } } : {}) },
         include: { scheduleSlot: true }
     });
     // If changing from ABSENT->ATTENDED or ATTENDED->ABSENT we'd need to adjust classesUsed. 

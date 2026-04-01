@@ -71,19 +71,28 @@ const assignSlot = async (data, branchId) => {
             throw new errors_1.ConflictError('Slot is already occupied');
         }
         if (existingSlot) {
-            return await tx.scheduleSlot.update({
+            await tx.scheduleSlot.update({
                 where: { id: existingSlot.id },
                 data: { studentId: data.studentId }
             });
         }
-        return await tx.scheduleSlot.create({
-            data: {
-                scheduleId: schedule.id,
-                timeSlot: data.timeSlot,
-                slotPosition: data.slotPosition,
-                studentId: data.studentId
-            }
-        });
+        else {
+            await tx.scheduleSlot.create({
+                data: {
+                    scheduleId: schedule.id,
+                    timeSlot: data.timeSlot,
+                    slotPosition: data.slotPosition,
+                    studentId: data.studentId
+                }
+            });
+        }
+        if (data.studentId && data.coachId) {
+            await tx.coachStudentAssignment.createMany({
+                data: [{ coachId: data.coachId, studentId: data.studentId }],
+                skipDuplicates: true
+            });
+        }
+        return true;
     });
 };
 exports.assignSlot = assignSlot;
@@ -141,6 +150,19 @@ const swapSlot = async (data, branchId) => {
         }
         else if (studentId1) {
             await tx.scheduleSlot.create({ data: { scheduleId: schedule2.id, timeSlot: data.toTimeSlot, slotPosition: data.toSlotPosition, studentId: studentId1 } });
+        }
+        // Auto assign to coaches
+        if (studentId2) {
+            await tx.coachStudentAssignment.createMany({
+                data: [{ coachId: data.fromCoachId, studentId: studentId2 }],
+                skipDuplicates: true
+            });
+        }
+        if (studentId1) {
+            await tx.coachStudentAssignment.createMany({
+                data: [{ coachId: data.toCoachId, studentId: studentId1 }],
+                skipDuplicates: true
+            });
         }
     });
 };

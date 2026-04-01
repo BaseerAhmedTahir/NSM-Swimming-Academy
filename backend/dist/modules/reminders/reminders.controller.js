@@ -38,7 +38,7 @@ const remindersService = __importStar(require("./reminders.service"));
 const response_1 = require("../../utils/response");
 const getReminders = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const result = await remindersService.getReminders(branchId, req.query);
         return (0, response_1.successResponse)({ res, data: result.data, meta: result.meta });
     }
@@ -49,7 +49,7 @@ const getReminders = async (req, res, next) => {
 exports.getReminders = getReminders;
 const createReminder = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId || req.user.branchId;
+        const branchId = req.scopedBranchId || req.user.branchId;
         const reminder = await remindersService.createReminder(req.body, branchId, req.user.id);
         return (0, response_1.successResponse)({ res, data: reminder, statusCode: 201, message: 'Reminder created successfully' });
     }
@@ -60,7 +60,7 @@ const createReminder = async (req, res, next) => {
 exports.createReminder = createReminder;
 const updateReminder = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const reminder = await remindersService.updateReminder(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: reminder, message: 'Reminder updated successfully' });
     }
@@ -71,7 +71,7 @@ const updateReminder = async (req, res, next) => {
 exports.updateReminder = updateReminder;
 const snoozeReminder = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const reminder = await remindersService.snoozeReminder(req.params.id, branchId, req.body.snoozeUntil);
         return (0, response_1.successResponse)({ res, data: reminder, message: 'Reminder snoozed' });
     }
@@ -82,7 +82,7 @@ const snoozeReminder = async (req, res, next) => {
 exports.snoozeReminder = snoozeReminder;
 const deleteReminder = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         await remindersService.deleteReminder(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, message: 'Reminder deleted' });
     }

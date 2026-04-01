@@ -6,9 +6,11 @@ import { theme } from '../../constants/theme';
 import AppBackground from '../../components/ui/AppBackground';
 import GlassCard from '../../components/ui/GlassCard';
 import api from '../../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function NotificationsScreen() {
     const [notifs, setNotifs] = useState<any[]>([]);
+    const [expandedNotifs, setExpandedNotifs] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -16,7 +18,10 @@ export default function NotificationsScreen() {
             try {
                 const res = await api.get('/student-app/notifications');
                 if (res.data.success) {
-                    setNotifs(res.data.data);
+                    const deletedStr = await AsyncStorage.getItem('deleted_notifs');
+                    const deletedIds = deletedStr ? JSON.parse(deletedStr) : [];
+                    const filtered = res.data.data.filter((n: any) => !deletedIds.includes(n.id));
+                    setNotifs(filtered);
                 }
             } catch (error) {
                 console.error("Fetch notifications error", error);
@@ -29,11 +34,27 @@ export default function NotificationsScreen() {
 
     const handlePress = (id: any) => {
         setNotifs(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        setExpandedNotifs(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
         // You would typically hit a markAsRead endpoint here too
     };
 
-    const handleRemove = (id: any) => {
+    const handleRemove = async (id: any) => {
         setNotifs(prev => prev.filter(n => n.id !== id));
+        try {
+            const deletedStr = await AsyncStorage.getItem('deleted_notifs');
+            const deletedIds = deletedStr ? JSON.parse(deletedStr) : [];
+            if (!deletedIds.includes(id)) {
+                deletedIds.push(id);
+                await AsyncStorage.setItem('deleted_notifs', JSON.stringify(deletedIds));
+            }
+        } catch (e) {
+            console.error('Failed to save deleted notification state', e);
+        }
     };
 
     const getIconData = (type: string) => {
@@ -68,7 +89,7 @@ export default function NotificationsScreen() {
                             <Text style={[styles.title, !item.isRead && styles.unreadTitle]} numberOfLines={1}>{item.title}</Text>
                             <Text style={styles.date}>{dateStr}</Text>
                         </View>
-                        <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+                        <Text style={styles.message} numberOfLines={expandedNotifs.has(item.id) ? undefined : 2}>{item.message}</Text>
                     </View>
                     {!item.isRead && <View style={styles.unreadDot} />}
                     <TouchableOpacity 

@@ -3,22 +3,44 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
 const database_1 = require("../../config/database");
 const errors_1 = require("../../utils/errors");
-const env_1 = require("../../config/env");
+const client_1 = require("@prisma/client");
 const getProfile = async (studentId) => {
-    return await database_1.prisma.student.findUniqueOrThrow({
+    const student = await database_1.prisma.student.findUniqueOrThrow({
         where: { id: studentId },
         select: {
             id: true, studentId: true, name: true, email: true, phone: true,
-            level: true, status: true, packageType: true, membershipExpiryDate: true,
-            branch: { select: { id: true, name: true } }
+            level: true, status: true, packageType: true,
+            membershipStartDate: true, membershipExpiryDate: true,
+            branch: { select: { id: true, name: true } },
+            membershipHistory: {
+                where: { status: client_1.MembershipStatus.ACTIVE },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { totalClasses: true, classesUsed: true }
+            }
         }
     });
+    // Flatten active membership for easy consumption in mobile app
+    const activeMembership = student.membershipHistory[0] || null;
+    const { membershipHistory: _, ...studentData } = student;
+    return {
+        ...studentData,
+        totalClasses: activeMembership?.totalClasses ?? 0,
+        classesUsed: activeMembership?.classesUsed ?? 0,
+    };
 };
 exports.getProfile = getProfile;
 const getSchedule = async (studentId) => {
     return await database_1.prisma.scheduleSlot.findMany({
         where: { studentId },
-        include: { schedule: { include: { coach: { select: { name: true } } } } },
+        include: {
+            schedule: {
+                include: {
+                    coach: { select: { name: true } },
+                    branch: { select: { id: true, name: true } } // ← added for mobile "branch Branch" display
+                }
+            }
+        },
         orderBy: { schedule: { date: 'asc' } }
     });
 };
@@ -42,9 +64,9 @@ const getNotifications = async (studentId, branchId) => {
     return await database_1.prisma.notification.findMany({
         where: {
             OR: [
-                { sentTo: 'ALL' },
-                { sentTo: 'BRANCH', branchId },
-                { sentTo: 'INDIVIDUAL', targetId: studentId }
+                { sentTo: client_1.NotificationTarget.ALL },
+                { sentTo: client_1.NotificationTarget.BRANCH, branchId },
+                { sentTo: client_1.NotificationTarget.INDIVIDUAL, targetId: studentId }
             ]
         },
         orderBy: { createdAt: 'desc' }
@@ -62,9 +84,8 @@ const cancelClass = async (studentId, scheduleSlotId) => {
     if (slot.attendanceRecord) {
         throw new errors_1.ConflictError('Cannot cancel a class that already has attendance marked');
     }
-    // Check 2-hour threshold
+    // Enforce 24-hour cancellation policy
     const classDateTime = new Date(slot.schedule.date);
-    // Add time from timeSlot string (e.g. "4:00 PM")
     const [time, meridian] = slot.timeSlot.split(' ');
     const [hours, minutes] = time.split(':');
     let hour = parseInt(hours);
@@ -74,10 +95,10 @@ const cancelClass = async (studentId, scheduleSlotId) => {
         hour = 0;
     classDateTime.setUTCHours(hour, parseInt(minutes), 0, 0);
     const now = new Date();
-    const thresholdHours = Number(env_1.env.CANCELLATION_THRESHOLD_HOURS || 2);
+    const CANCELLATION_HOURS_REQUIRED = 24;
     const diffHours = (classDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (diffHours < thresholdHours) {
-        throw new errors_1.ConflictError(`You can only cancel classes at least ${thresholdHours} hours in advance.`);
+    if (diffHours < CANCELLATION_HOURS_REQUIRED) {
+        throw new errors_1.ConflictError('Classes can only be cancelled at least 24 hours before the scheduled time.');
     }
     // Actually cancel
     await database_1.prisma.$transaction(async (tx) => {
@@ -85,13 +106,13 @@ const cancelClass = async (studentId, scheduleSlotId) => {
             where: { id: scheduleSlotId },
             data: { studentId: null }
         });
-        await tx.cancellationRecord.create({
+        // ClassCancellation model: studentId, classDate (Date), classTime (String), reason
+        await tx.classCancellation.create({
             data: {
                 studentId,
-                branchId: slot.schedule.branchId,
+                classDate: new Date(slot.schedule.date),
+                classTime: slot.timeSlot,
                 reason: 'Cancelled by student via app',
-                status: 'APPROVED',
-                date: now
             }
         });
     });

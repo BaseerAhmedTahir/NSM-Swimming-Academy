@@ -126,8 +126,10 @@ export const getStudentById = async (id: string, branchId?: string) => {
 // Admin directly creates an ACTIVE student (which generates payment + invoice)
 export const createStudent = async (data: any, adminBranchId: string) => {
     const branchId = data.branchId || adminBranchId;
+    const tempPassword = data.password; // Capture plaintext before hashing
     
-    return await prisma.$transaction(async (tx: any) => {
+    // 1. Database Operations in Transaction
+    const transactionResult = await prisma.$transaction(async (tx: any) => {
         const branch = await tx.branch.findUniqueOrThrow({ where: { id: branchId } });
         
         // Find the student with the highest sequence number in this branch to avoid collisions
@@ -148,8 +150,7 @@ export const createStudent = async (data: any, adminBranchId: string) => {
 
         const studentId = generateStudentId(branch.code, nextSequence);
 
-        const tempPassword = data.password; // Capture plaintext before hashing
-        const hashedPassword = await bcrypt.hash(data.password, 10);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
         
         const packageInfo = await getPackageDetails(data.packageType, tx);
         const amount = packageInfo.price;
@@ -218,15 +219,22 @@ export const createStudent = async (data: any, adminBranchId: string) => {
             }
         });
 
-        // 3. Send Credentials Email with temp password so student can log in
-        const emailResult = await sendCredentialsEmail(student.email, student.name, studentId, tempPassword).catch(err => {
-            console.error('Email system crash:', err);
-            return { success: false, error: err.message };
-        });
-
         const { password: _, ...studentData } = student;
-        return { ...studentData, emailResult };
+        return studentData;
     });
+
+    // 3. Send Credentials Email with temp password so student can log in
+    const emailResult = await sendCredentialsEmail(
+        transactionResult.email, 
+        transactionResult.name, 
+        transactionResult.studentId, 
+        tempPassword
+    ).catch(err => {
+        console.error('Email system crash:', err);
+        return { success: false, error: err.message };
+    });
+
+    return { ...transactionResult, emailResult };
 };
 
 export const updateStudent = async (id: string, branchId: string | undefined, data: any) => {

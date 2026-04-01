@@ -38,7 +38,7 @@ const paymentsService = __importStar(require("./payments.service"));
 const response_1 = require("../../utils/response");
 const getAllPayments = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const result = await paymentsService.getAllPayments(req.query, branchId);
         return (0, response_1.successResponse)({ res, data: result.data, meta: result.meta });
     }
@@ -49,7 +49,7 @@ const getAllPayments = async (req, res, next) => {
 exports.getAllPayments = getAllPayments;
 const getPaymentById = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const payment = await paymentsService.getPaymentById(req.params.id, branchId);
         return (0, response_1.successResponse)({ res, data: payment });
     }
@@ -60,7 +60,7 @@ const getPaymentById = async (req, res, next) => {
 exports.getPaymentById = getPaymentById;
 const createPayment = async (req, res, next) => {
     try {
-        const adminBranchId = req.user.branchId;
+        const adminBranchId = req.scopedBranchId || req.user.branchId;
         const payment = await paymentsService.createPayment(req.body, adminBranchId);
         return (0, response_1.successResponse)({ res, data: payment, statusCode: 201, message: 'Payment created successfully' });
     }
@@ -71,7 +71,7 @@ const createPayment = async (req, res, next) => {
 exports.createPayment = createPayment;
 const updatePayment = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const payment = await paymentsService.updatePayment(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: payment, message: 'Payment updated successfully' });
     }
@@ -82,7 +82,7 @@ const updatePayment = async (req, res, next) => {
 exports.updatePayment = updatePayment;
 const getPaymentStats = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const stats = await paymentsService.getPaymentStats(branchId);
         return (0, response_1.successResponse)({ res, data: stats });
     }
@@ -93,7 +93,7 @@ const getPaymentStats = async (req, res, next) => {
 exports.getPaymentStats = getPaymentStats;
 const createInstallment = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const installment = await paymentsService.createInstallment(req.body, branchId);
         return (0, response_1.successResponse)({ res, data: installment, statusCode: 201, message: 'Installment created successfully' });
     }
@@ -104,7 +104,7 @@ const createInstallment = async (req, res, next) => {
 exports.createInstallment = createInstallment;
 const updateInstallment = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId;
         const installment = await paymentsService.updateInstallment(req.params.id, branchId, req.body);
         return (0, response_1.successResponse)({ res, data: installment, message: 'Installment updated successfully' });
     }

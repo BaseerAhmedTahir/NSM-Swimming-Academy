@@ -127,12 +127,30 @@ export default function NotificationsPage() {
                 sentTo: 'ALL',
             };
 
-            if (selectedStudentId !== 'all') {
-                payload.sentTo = 'INDIVIDUAL';
-                payload.targetId = selectedStudentId;
-            } else if (selectedBranch !== 'all') {
-                payload.sentTo = 'BRANCH';
-                payload.branchId = selectedBranch;
+            if (user?.role === 'STAFF') {
+                payload.branchId = user.branchId;
+                if (selectedStudentId !== 'all') {
+                    payload.sentTo = 'INDIVIDUAL';
+                    payload.targetId = selectedStudentId;
+                } else if (targetType === 'pending') {
+                    payload.sentTo = 'PENDING_FEES';
+                } else {
+                    payload.sentTo = 'BRANCH';
+                }
+            } else {
+                // SUPER_ADMIN logic
+                if (selectedStudentId !== 'all') {
+                    payload.sentTo = 'INDIVIDUAL';
+                    payload.targetId = selectedStudentId;
+                } else if (targetType === 'pending') {
+                    payload.sentTo = 'PENDING_FEES';
+                    if (selectedBranch !== 'all') {
+                        payload.branchId = selectedBranch;
+                    }
+                } else if (selectedBranch !== 'all') {
+                    payload.sentTo = 'BRANCH';
+                    payload.branchId = selectedBranch;
+                }
             }
 
             await api.post('/notifications', payload);
@@ -190,7 +208,7 @@ export default function NotificationsPage() {
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-bold text-foreground border-b border-border/50 pb-2">1. Select Target Audience</h4>
 
-                                        <RadioGroup defaultValue="all" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <RadioGroup value={targetType} onValueChange={setTargetType} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <RadioGroupItem value="all" id="aud-all" className="peer sr-only" />
                                                 <Label htmlFor="aud-all" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-muted hover:text-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer">
@@ -234,7 +252,11 @@ export default function NotificationsPage() {
                                                 <SelectTrigger><SelectValue placeholder="Specific Student..." /></SelectTrigger>
                                                 <SelectContent className="max-h-[300px]">
                                                     <SelectItem value="all">No Specific Student</SelectItem>
-                                                    {allStudents.filter(s => selectedBranch === 'all' || s.branchId === selectedBranch).map(student => (
+                                                    {allStudents.filter(s => {
+                                                        const branchMatch = selectedBranch === 'all' || s.branchId === selectedBranch;
+                                                        const pendingMatch = targetType === 'pending' ? (s.payments?.[0] && ['PENDING', 'OVERDUE'].includes(s.payments[0].status)) : true;
+                                                        return branchMatch && pendingMatch;
+                                                    }).map(student => (
                                                         <SelectItem key={student.id} value={student.id}>
                                                             {student.name} ({student.studentId})
                                                         </SelectItem>

@@ -18,14 +18,39 @@ const adminLogin = async (data) => {
         where: { username: data.username },
         include: { branch: true }
     });
-    if (!admin || admin.branchId !== data.branchId || !admin.isActive) {
-        throw new errors_1.UnauthorizedError('Invalid credentials or branch access');
+    if (!admin || !admin.isActive) {
+        throw new errors_1.UnauthorizedError('Invalid credentials');
+    }
+    if (data.branchId) {
+        if (admin.role === 'SUPER_ADMIN') {
+            throw new errors_1.UnauthorizedError('Super Admins must use the HQ Login portal.');
+        }
+        if (admin.branchId !== data.branchId) {
+            throw new errors_1.UnauthorizedError('Invalid branch access');
+        }
+    }
+    else {
+        if (admin.role !== 'SUPER_ADMIN') {
+            throw new errors_1.UnauthorizedError('A branch ID is required for non-HQ logins.');
+        }
     }
     const isMatch = await bcryptjs_1.default.compare(data.password, admin.password);
     if (!isMatch) {
         throw new errors_1.UnauthorizedError('Invalid credentials');
     }
-    const tokens = (0, jwt_1.generateTokens)({ id: admin.id, role: admin.role, branchId: admin.branchId });
+    // Parse branch permissions to embed in JWT for middleware enforcement
+    let permissions;
+    if (admin.role === 'STAFF' && admin.branch?.permissions) {
+        try {
+            permissions = typeof admin.branch.permissions === 'string'
+                ? JSON.parse(admin.branch.permissions)
+                : admin.branch.permissions;
+        }
+        catch {
+            permissions = ['dashboard', 'schedule', 'registration', 'payments', 'coaches', 'reminders'];
+        }
+    }
+    const tokens = (0, jwt_1.generateTokens)({ id: admin.id, role: admin.role, branchId: admin.branchId, permissions });
     // Store refresh token
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
@@ -39,25 +64,35 @@ const adminLogin = async (data) => {
 };
 exports.adminLogin = adminLogin;
 const studentRegister = async (data) => {
-    // Check email limits
+    // Check for duplicate email or phone
     const existing = await database_1.prisma.student.findFirst({
         where: { OR: [{ email: data.email }, { phone: data.phone }] }
     });
     if (existing)
         throw new errors_1.ConflictError('Email or phone already registered');
-    // Get the latest student to generate new ID
     const countInBranch = await database_1.prisma.student.count({ where: { branchId: data.branchId } });
     const branch = await database_1.prisma.branch.findUnique({ where: { id: data.branchId } });
     if (!branch)
         throw new errors_1.NotFoundError('Branch not found');
     const studentId = (0, generateId_1.generateStudentId)(branch.code, countInBranch + 1);
     const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
+    // Self-registration via mobile: fill required DB fields with defaults
+    // Admin will complete the profile when activating the student
     const student = await database_1.prisma.student.create({
         data: {
-            ...data,
-            studentId,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
             password: hashedPassword,
+            branchId: data.branchId,
+            studentId,
             status: 'PENDING',
+            age: data.age ?? 0, // Admin fills in during activation
+            gender: data.gender ?? 'MALE', // Admin fills in during activation
+            level: data.level ?? 'Beginner', // Admin fills in during activation
+            category: data.category ?? 'ADULT', // Admin fills in during activation
+            packageType: data.packageType ?? 'BASIC', // Admin fills in during activation
+            privacyPolicyAccepted: data.privacyPolicyAccepted ?? true,
             privacyPolicyAcceptedAt: new Date(),
         }
     });
@@ -68,7 +103,8 @@ const studentRegister = async (data) => {
 exports.studentRegister = studentRegister;
 const studentLogin = async (data) => {
     const student = await database_1.prisma.student.findFirst({
-        where: { OR: [{ email: data.emailOrPhone }, { phone: data.emailOrPhone }] }
+        where: { OR: [{ email: data.emailOrPhone }, { phone: data.emailOrPhone }] },
+        include: { branch: { select: { id: true, name: true } } }
     });
     if (!student)
         throw new errors_1.UnauthorizedError('Invalid credentials');
@@ -86,7 +122,8 @@ const studentLogin = async (data) => {
         data: { token: tokens.refreshToken, studentId: student.id, expiresAt }
     });
     const { password: _, ...studentData } = student;
-    return { ...tokens, student: studentData };
+    // Return branch in user object so mobile app can save admin-assigned branch immediately
+    return { ...tokens, user: studentData };
 };
 exports.studentLogin = studentLogin;
 const refreshToken = async (token) => {

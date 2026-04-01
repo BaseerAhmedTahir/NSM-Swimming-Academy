@@ -1,5 +1,6 @@
 "use client";
-
+import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Search, Settings, LogOut, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { format } from "date-fns";
-import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import AddStudentModal from "../students/AddStudentModal";
 import { toast } from "sonner";
 
 export function TopBar() {
     const { user, logout } = useAuth();
+    const router = useRouter();
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const notifiedReminders = useRef<Map<string, number>>(new Map()); // id -> timestamp shown
@@ -132,13 +133,13 @@ export function TopBar() {
             <div className="flex items-center gap-4">
 
                 {/* Search */}
-                <div className="relative hidden md:flex items-center group">
+                {/* <div className="relative hidden md:flex items-center group">
                     <Search className="absolute left-3 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
                         placeholder="Search students, staff..."
                         className="w-64 pl-9 h-10 bg-muted/50 border-transparent focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl transition-all shadow-sm"
                     />
-                </div>
+                </div> */}
 
                 {/* Quick Action */}
                 <Button 
@@ -156,7 +157,12 @@ export function TopBar() {
                 />
 
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 shrink-0 text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-full transition-colors">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="relative h-10 w-10 shrink-0 text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-full transition-colors"
+                    onClick={() => router.push('/notifications')}
+                >
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-2 right-2.5 w-2 h-2 bg-error rounded-full ring-2 ring-card animate-pulse" />
                 </Button>
@@ -179,11 +185,11 @@ export function TopBar() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-border/50" />
-                        <DropdownMenuItem className="cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg transition-colors font-medium">
+                        {/* <DropdownMenuItem className="cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg transition-colors font-medium">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Academy Settings</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-border/50" />
+                        <DropdownMenuSeparator className="bg-border/50" /> */}
                         <DropdownMenuItem onClick={handleLogout} className="text-error focus:text-error focus:bg-error/10 cursor-pointer rounded-lg transition-colors font-medium">
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Log out</span>

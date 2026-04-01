@@ -38,7 +38,7 @@ const scheduleService = __importStar(require("./schedule.service"));
 const response_1 = require("../../utils/response");
 const getScheduleGrid = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId || req.query.branchId;
         const dateStr = req.query.date;
         if (!branchId)
             throw new Error('Branch ID is required');
@@ -52,7 +52,7 @@ const getScheduleGrid = async (req, res, next) => {
 exports.getScheduleGrid = getScheduleGrid;
 const assignSlot = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId || req.query.branchId;
         await scheduleService.assignSlot(req.body, branchId);
         return (0, response_1.successResponse)({ res, message: 'Slot assigned successfully' });
     }
@@ -63,7 +63,7 @@ const assignSlot = async (req, res, next) => {
 exports.assignSlot = assignSlot;
 const removeSlot = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId || req.query.branchId;
         await scheduleService.removeSlot(req.body, branchId);
         return (0, response_1.successResponse)({ res, message: 'Slot cleared successfully' });
     }
@@ -74,7 +74,7 @@ const removeSlot = async (req, res, next) => {
 exports.removeSlot = removeSlot;
 const swapSlot = async (req, res, next) => {
     try {
-        const branchId = req.query.branchId;
+        const branchId = req.scopedBranchId || req.query.branchId;
         await scheduleService.swapSlot(req.body, branchId);
         return (0, response_1.successResponse)({ res, message: 'Slots swapped successfully' });
     }

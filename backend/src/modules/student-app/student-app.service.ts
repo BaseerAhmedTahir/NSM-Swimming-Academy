@@ -31,9 +31,10 @@ export const getProfile = async (studentId: string) => {
 };
 
 export const getSchedule = async (studentId: string) => {
-    return await prisma.scheduleSlot.findMany({
+    const slots = await prisma.scheduleSlot.findMany({
         where: { studentId },
         include: {
+            attendanceRecord: { select: { status: true } },
             schedule: {
                 include: {
                     coach: { select: { name: true } },
@@ -43,6 +44,11 @@ export const getSchedule = async (studentId: string) => {
         },
         orderBy: { schedule: { date: 'asc' } }
     });
+
+    return slots.map(slot => ({
+        ...slot,
+        status: slot.attendanceRecord?.status || 'Upcoming'
+    }));
 };
 
 export const getAttendance = async (studentId: string) => {

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendPasswordResetEmail = exports.sendPaymentDueEmail = exports.sendMissedClassEmail = exports.sendWelcomeEmail = exports.sendEmail = void 0;
+exports.sendPasswordResetEmail = exports.sendPaymentDueEmail = exports.sendMissedClassEmail = exports.sendWelcomeEmail = exports.sendCredentialsEmail = exports.sendEmail = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const env_1 = require("../config/env");
 const transporter = nodemailer_1.default.createTransport({
@@ -17,12 +17,13 @@ const transporter = nodemailer_1.default.createTransport({
 });
 const sendEmail = async (to, subject, html) => {
     console.log(`✉️ [Email System] Attempting delivery to: ${to}`);
-    // 1. Try Resend API if key is provided
-    if (env_1.env.RESEND_API_KEY && env_1.env.RESEND_API_KEY !== 'undefined' && env_1.env.RESEND_API_KEY.length > 5) {
+    const provider = env_1.env.EMAIL_PROVIDER || 'gmail';
+    // 1. Try Resend if specifically selected
+    if (provider === 'resend' && env_1.env.RESEND_API_KEY && env_1.env.RESEND_API_KEY !== 'undefined') {
         console.log('🚀 [Email System] Route: Resend API');
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             const response = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
@@ -50,19 +51,16 @@ const sendEmail = async (to, subject, html) => {
             }
         }
         catch (error) {
-            const errorMsg = error.name === 'AbortError' ? 'Connection timed out' : error.message;
-            console.error('❌ [Email System] Resend Connection Error:', errorMsg);
-            // If Resend connection fails, we don't fallback here to keep it predictable, 
-            // or you can choose to fallback to SMTP if configured
+            console.error('❌ [Email System] Resend Connection Error:', error.message);
         }
     }
-    // 2. Fallback to SMTP
+    // 2. Default/Fallback to SMTP (Gmail)
     if (!env_1.env.SMTP_USER || !env_1.env.SMTP_PASS) {
-        const warning = '⚠️ [Email System] Delivery Failed: No valid Resend API Key and no SMTP credentials in .env';
+        const warning = '⚠️ [Email System] Configuration Failed: Missing SMTP credentials in .env';
         console.warn(warning);
-        return { success: false, error: 'Email configuration missing (Resend API Key or SMTP credentials)' };
+        return { success: false, error: 'Email configuration missing' };
     }
-    console.log('🔗 [Email System] Route: SMTP');
+    console.log(`🔗 [Email System] Route: SMTP (${env_1.env.SMTP_HOST})`);
     try {
         const info = await transporter.sendMail({
             from: `"${env_1.env.EMAIL_FROM_NAME}" <${env_1.env.EMAIL_FROM}>`,
@@ -80,6 +78,38 @@ const sendEmail = async (to, subject, html) => {
 };
 exports.sendEmail = sendEmail;
 // --- Predefined Templates ---
+const sendCredentialsEmail = async (to, studentName, studentId, tempPassword) => {
+    const subject = 'Welcome to NSM Swimming Academy — Your Login Credentials';
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #1C5CAA;">Welcome, ${studentName}!</h2>
+            <p>You have been successfully registered at <strong>NSM Swimming Academy</strong>. Below are your login credentials for the mobile app.</p>
+            <div style="background-color: #f0f6ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1C5CAA;">
+                <p style="margin: 0 0 8px 0; font-weight: bold; color: #0B213F;">Your Login Details:</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #476082; font-weight: bold; width: 140px;">Email Address:</td>
+                        <td style="padding: 6px 0; color: #0B213F; font-weight: bold;">${to}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #476082; font-weight: bold;">Temporary Password:</td>
+                        <td style="padding: 6px 0; color: #1C5CAA; font-weight: bold; font-size: 18px; letter-spacing: 2px;">${tempPassword}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #476082; font-weight: bold;">Student ID:</td>
+                        <td style="padding: 6px 0; color: #0B213F; font-weight: bold;">${studentId}</td>
+                    </tr>
+                </table>
+            </div>
+            <p style="color: #d97706; font-weight: bold;">⚠️ Please keep your password safe. You can use it to log in to the NSM Swimming Academy mobile app.</p>
+            <p>Use your <strong>email address</strong> and the password above to log in. Your branch and schedule will be assigned automatically.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #64748b;">Best Regards,<br>NSM Swimming Academy Team</p>
+        </div>
+    `;
+    return await (0, exports.sendEmail)(to, subject, html);
+};
+exports.sendCredentialsEmail = sendCredentialsEmail;
 const sendWelcomeEmail = async (to, studentName, studentId) => {
     const subject = 'Welcome to NSM Swimming Academy!';
     const html = `

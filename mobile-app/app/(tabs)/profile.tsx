@@ -15,7 +15,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const [branchName, setBranchName] = useState('My Branch');
     const [student, setStudent] = useState<any>(null);
-    const [attendance, setAttendance] = useState({ attended: 0, totalClasses: 24 });
+    const [attendance, setAttendance] = useState({ attended: 0, absent: 0, totalClasses: 24 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -42,8 +42,9 @@ export default function ProfileScreen() {
 
                 if (attRes.data.success) {
                     const records = attRes.data.data;
-                    const attended = records.filter((r: any) => r.status === 'ATTENDED').length;
-                    setAttendance(prev => ({ ...prev, attended }));
+                    const attended = records.filter((r: any) => r.status === 'ATTENDED' || r.status === 'PRESENT').length;
+                    const absent = records.filter((r: any) => r.status === 'ABSENT' || r.status === 'INFORMED_ABSENT').length;
+                    setAttendance(prev => ({ ...prev, attended, absent }));
                 }
             } catch (error) {
                 console.error("Profile load error", error);
@@ -168,7 +169,7 @@ export default function ProfileScreen() {
                                     <Text style={styles.statLabelSm}>Present</Text>
                                 </View>
                                 <View style={styles.statItem}>
-                                    <Text style={styles.statNumber}>0</Text>
+                                    <Text style={styles.statNumber}>{attendance.absent}</Text>
                                     <Text style={styles.statLabelSm}>Absent</Text>
                                 </View>
                                 <View style={styles.statItem}>
@@ -181,13 +182,13 @@ export default function ProfileScreen() {
 
                     {/* Section: Settings/Actions */}
                     <View style={styles.section}>
-                        <TouchableOpacity style={styles.actionItem}>
+                        {/* <TouchableOpacity style={styles.actionItem}>
                             <GlassCard style={styles.actionCard}>
                                 <Ionicons name="settings-outline" size={22} color={theme.colors.textPrimary} />
                                 <Text style={styles.actionText}>App Settings</Text>
                                 <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
                             </GlassCard>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                         <TouchableOpacity
                             style={styles.actionItem}
                             onPress={handleLogout}

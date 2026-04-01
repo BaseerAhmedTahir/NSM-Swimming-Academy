@@ -40,7 +40,7 @@ const rbac_1 = require("../../middleware/rbac");
 const validate_1 = require("../../middleware/validate");
 const student_app_schema_1 = require("./student-app.schema");
 const router = (0, express_1.Router)();
-// Only connected students
+// Only authenticated students
 router.use(auth_1.authenticate);
 router.use((0, rbac_1.authorize)(['STUDENT']));
 router.get('/profile', studentAppController.getProfile);
@@ -48,5 +48,6 @@ router.get('/schedule', studentAppController.getSchedule);
 router.get('/attendance', studentAppController.getAttendance);
 router.get('/payments', studentAppController.getPayments);
 router.get('/notifications', studentAppController.getNotifications);
+router.post('/notifications/:id/read', studentAppController.markNotificationRead);
 router.post('/cancel-class', (0, validate_1.validate)(student_app_schema_1.cancelClassSchema), studentAppController.cancelClass);
 exports.default = router;

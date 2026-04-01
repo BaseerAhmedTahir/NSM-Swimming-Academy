@@ -17,6 +17,9 @@ const getAllCoaches = async (branchId, queryArgs) => {
             orderBy: { createdAt: 'desc' },
             include: {
                 branch: true,
+                studentAssignments: {
+                    include: { student: { select: { id: true, name: true, studentId: true, level: true } } }
+                },
                 _count: {
                     select: { studentAssignments: true }
                 }

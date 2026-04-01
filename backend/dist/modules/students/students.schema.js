@@ -4,12 +4,12 @@ exports.createStudentSchema = exports.updateStudentSchema = exports.renewStudent
 const zod_1 = require("zod");
 exports.activateStudentSchema = zod_1.z.object({
     body: zod_1.z.object({
-        packageType: zod_1.z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']).optional(), // Optional if already set during registration
+        packageType: zod_1.z.string().optional(), // Accepts dynamic package keys from Settings
     })
 });
 exports.renewStudentSchema = zod_1.z.object({
     body: zod_1.z.object({
-        packageType: zod_1.z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']),
+        packageType: zod_1.z.string(), // Accepts dynamic package keys from Settings
         discount: zod_1.z.number().min(0).optional().default(0),
         paymentMode: zod_1.z.enum(['CASH', 'CARD', 'ONLINE']),
         paymentStatus: zod_1.z.enum(['PAID', 'PENDING']).default('PAID'),
@@ -28,7 +28,7 @@ exports.updateStudentSchema = zod_1.z.object({
         discount: zod_1.z.number().min(0).optional(),
         branchId: zod_1.z.string().uuid().optional(),
         profileImage: zod_1.z.string().url().optional().or(zod_1.z.literal('')),
-        packageType: zod_1.z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']).optional(),
+        packageType: zod_1.z.string().optional(), // Accepts dynamic package keys from Settings
         paymentMode: zod_1.z.enum(['CASH', 'CARD', 'ONLINE']).optional(),
         membershipStartDate: zod_1.z.string().optional(),
         membershipExpiryDate: zod_1.z.string().optional(),
@@ -46,8 +46,8 @@ exports.createStudentSchema = zod_1.z.object({
         password: zod_1.z.string().min(6, 'Password must be at least 6 characters'),
         level: zod_1.z.string().min(1, 'Level is required'),
         category: zod_1.z.enum(['TODDLER', 'KID', 'ADULT']),
-        packageType: zod_1.z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']),
-        branchId: zod_1.z.string().optional(), // branchScope handles auto-injection and Prisma uses CUIDs
+        packageType: zod_1.z.string(), // Accepts dynamic package keys from Settings
+        branchId: zod_1.z.string().optional(),
         discount: zod_1.z.number().min(0).optional().default(0),
         paymentMode: zod_1.z.enum(['CASH', 'CARD', 'ONLINE']),
         paymentStatus: zod_1.z.enum(['PAID', 'PENDING']).default('PAID'),
