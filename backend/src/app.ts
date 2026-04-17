@@ -29,6 +29,9 @@ import { swaggerSpec } from './config/swagger';
 
 const app: Express = express();
 
+// Trust proxy for rate limiting (essential for Railway/Heroku/Cloudflare)
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet());
 app.use(cors(corsOptions));
