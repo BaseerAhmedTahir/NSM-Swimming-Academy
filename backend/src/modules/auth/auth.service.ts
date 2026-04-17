@@ -12,8 +12,9 @@ import { sendWelcomeEmail, sendPasswordResetEmail } from '../../utils/email';
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 
 export const adminLogin = async (data: z.infer<typeof adminLoginSchema>['body']) => {
+    const trimmedUsername = data.username?.trim().toLowerCase();
     const admin = await prisma.admin.findUnique({
-        where: { username: data.username },
+        where: { username: trimmedUsername },
         include: { branch: true }
     });
 

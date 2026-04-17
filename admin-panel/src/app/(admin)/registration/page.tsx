@@ -51,25 +51,20 @@ export default function RegistrationPage() {
     const [totalEntries, setTotalEntries] = useState(0);
     const pageSize = 10;
 
+    const [allSettings, setAllSettings] = useState<any[]>([]);
+
     const fetchSettings = async () => {
         try {
             const res = await api.get('/settings');
             if (res.data.success) {
-                const pkgs = res.data.data.filter((s:any) => s.key.startsWith('PACKAGE_')).map((s:any) => {
-                    const parsed = JSON.parse(s.value);
-                    return {
-                        id: s.key.replace('PACKAGE_', ''),
-                        name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
-                        classes: parsed.classes,
-                        price: parsed.price
-                    };
-                });
-                if(pkgs.length > 0) setDynamicPackages(pkgs);
+                setAllSettings(res.data.data);
             }
         } catch(e) {
             console.error("Failed to load settings", e);
         }
     };
+
+
 
     const fetchBranches = async () => {
         try {
@@ -129,6 +124,8 @@ export default function RegistrationPage() {
                             invoiceNumber: latestPayment?.invoiceNumber || "N/A",
                             status: latestPayment?.status || "Pending",
                             amount: latestPayment?.totalAmount || 0,
+                            paidAmount: latestPayment?.paidAmount || 0,
+                            pendingAmount: latestPayment?.pendingAmount || 0,
                             mode: latestPayment?.paymentMode || "Card",
                             discount: latestPayment?.discount || 0,
                             date: latestPayment?.paymentDate ? new Date(latestPayment.paymentDate).toLocaleDateString() : "N/A",
@@ -169,6 +166,40 @@ export default function RegistrationPage() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    useEffect(() => {
+        if (!allSettings || allSettings.length === 0 || !selectedStudent) return;
+        const branchId = selectedStudent.branchId || selectedStudent.raw?.branchId;
+        if (!branchId) return;
+
+        const branchPrefix = `_${branchId}`;
+        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+        let packagesToUse = branchPackages;
+
+        if (branchPackages.length === 0) {
+            packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b:any) => s.key.endsWith('_' + b.id)));
+        }
+
+        const pkgs = packagesToUse.map((s:any) => {
+            const parsed = JSON.parse(s.value);
+            let baseKey = s.key.replace(branchPrefix, '');
+            return {
+                id: baseKey.replace('PACKAGE_', ''),
+                name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
+                classes: parsed.classes,
+                price: parsed.price,
+                durationMonths: parsed.durationMonths || 1
+            };
+        });
+
+        setDynamicPackages(pkgs);
+        if (pkgs.length > 0) {
+            setRenewData(prev => {
+                const isValid = pkgs.some((p: any) => p.id === prev.packageType);
+                return isValid ? prev : { ...prev, packageType: pkgs[0].id };
+            });
+        }
+    }, [selectedStudent, allSettings, branches]);
+
     // Handlers
     const handleOpenAdd = () => {
         setIsEditMode(false);
@@ -178,7 +209,14 @@ export default function RegistrationPage() {
 
     const handleOpenEdit = (student: any) => {
         setIsEditMode(true);
-        setSelectedStudent(student.raw || student);
+        // Merge mapped fee data into raw so the modal can pre-fill partial payment fields
+        const rawWithFee = {
+            ...(student.raw || student),
+            paymentStatus: student.fee?.status || student.raw?.paymentStatus,
+            paidAmount:    student.fee?.paidAmount ?? 0,
+            pendingAmount: student.fee?.pendingAmount ?? 0,
+        };
+        setSelectedStudent(rawWithFee);
         setIsAddModalOpen(true);
     };
 
@@ -490,10 +528,20 @@ export default function RegistrationPage() {
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">{student.attendance.totalClasses} Classes</p>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <div className={cn("px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider border", student.fee.status?.toUpperCase() === 'PAID' ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20")}>
+                                        <div className="flex flex-col gap-1">
+                                            <div className={cn(
+                                                "px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider border w-fit",
+                                                student.fee.status?.toUpperCase() === 'PAID'    ? "bg-success/10 text-success border-success/20" :
+                                                student.fee.status?.toUpperCase() === 'PARTIAL' ? "bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" :
+                                                "bg-warning/10 text-warning border-warning/20"
+                                            )}>
                                                 {student.fee.status}
                                             </div>
+                                            {student.fee.status?.toUpperCase() === 'PARTIAL' && student.fee.pendingAmount > 0 && (
+                                                <span className="text-[10px] text-orange-500 font-bold">
+                                                    Due: AED {student.fee.pendingAmount.toFixed(2)}
+                                                </span>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -630,7 +678,9 @@ export default function RegistrationPage() {
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Info</p>
                                 <p className="font-bold text-slate-800">
                                     Status: <span className={cn(
-                                        (selectedInvoice?.status || selectedStudent?.fee?.status) === 'PAID' ? "text-green-600" : "text-yellow-600"
+                                        (selectedInvoice?.status || selectedStudent?.fee?.status) === 'PAID' ? "text-green-600" :
+                                        (selectedInvoice?.status || selectedStudent?.fee?.status) === 'PARTIAL' ? "text-orange-500" :
+                                        "text-yellow-600"
                                     )}>
                                         {selectedInvoice?.status || selectedStudent?.fee?.status || "PENDING"}
                                     </span>
@@ -656,7 +706,7 @@ export default function RegistrationPage() {
                                             <p className="text-sm text-slate-500 font-medium">Academy Registration and Coaching Fees</p>
                                         </td>
                                         <td className="py-4 font-bold text-slate-800 text-right">
-                                            AED {(selectedInvoice?.amount || selectedStudent?.fee?.amount || 0).toLocaleString()}
+                                            AED {(selectedInvoice?.totalAmount || selectedStudent?.fee?.amount || 0).toLocaleString()}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -674,6 +724,17 @@ export default function RegistrationPage() {
                                     <span>Discount</span>
                                     <span className="text-red-500">- AED {(selectedInvoice?.discount || selectedStudent?.fee?.discount || 0).toLocaleString()}</span>
                                 </div>
+                                <div className="flex justify-between text-sm font-bold text-slate-600">
+                                    <span>VAT (5%)</span>
+                                    {(() => {
+                                        const baseAmt = selectedInvoice?.amount || selectedStudent?.fee?.amount || 0;
+                                        const discAmt = selectedInvoice?.discount || selectedStudent?.fee?.discount || 0;
+                                        const subTot = Math.max(0, baseAmt - discAmt);
+                                        const totalAmt = selectedInvoice?.totalAmount || subTot;
+                                        const vatAmt = Math.max(0, totalAmt - subTot);
+                                        return <span>AED {vatAmt.toLocaleString()}</span>;
+                                    })()}
+                                </div>
                                 {(selectedStudent?.trn || selectedStudent?.raw?.trn || selectedInvoice?.student?.trn) && (
                                     <div className="flex justify-between text-sm font-bold text-slate-600">
                                         <span>Student TRN</span>
@@ -683,9 +744,22 @@ export default function RegistrationPage() {
                                 <div className="flex justify-between items-center border-t-2 border-slate-800 pt-3">
                                     <span className="font-black text-xl text-slate-800 uppercase">Total</span>
                                     <span className="font-black text-xl text-blue-500">
-                                        AED {(selectedInvoice?.totalAmount || (selectedStudent?.fee?.amount ? selectedStudent.fee.amount - selectedStudent.fee.discount : 0)).toLocaleString()}
+                                        AED {(selectedInvoice?.totalAmount || Math.max(0, (selectedStudent?.fee?.amount || 0) - (selectedStudent?.fee?.discount || 0))).toLocaleString()}
                                     </span>
                                 </div>
+                                {/* Partial payment breakdown */}
+                                {(selectedInvoice?.status === 'PARTIAL' || selectedStudent?.fee?.status === 'PARTIAL') && (
+                                    <>
+                                        <div className="flex justify-between text-sm font-bold text-green-600 border-t border-slate-100 pt-2">
+                                            <span>Amount Paid</span>
+                                            <span>AED {(selectedInvoice?.paidAmount ?? selectedStudent?.fee?.paidAmount ?? 0).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm font-black text-orange-500">
+                                            <span>Remaining Balance</span>
+                                            <span>AED {(selectedInvoice?.pendingAmount ?? selectedStudent?.fee?.pendingAmount ?? 0).toLocaleString()}</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 

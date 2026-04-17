@@ -16,19 +16,35 @@ export const getProfile = async (studentId: string) => {
                 orderBy: { createdAt: 'desc' },
                 take: 1,
                 select: { totalClasses: true, classesUsed: true }
+            },
+            payments: {
+                orderBy: { paymentDate: 'desc' },
+                take: 1,
+                select: {
+                    id: true, status: true,
+                    totalAmount: true, paidAmount: true, pendingAmount: true,
+                    paymentDate: true
+                }
+            },
+            reviews: {
+                take: 1,
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, rating: true, text: true }
             }
         }
     });
 
     // Flatten active membership for easy consumption in mobile app
     const activeMembership = student.membershipHistory[0] || null;
-    const { membershipHistory: _, ...studentData } = student;
+    const { membershipHistory: _, reviews, ...studentData } = student;
     return {
         ...studentData,
         totalClasses: activeMembership?.totalClasses ?? 0,
         classesUsed: activeMembership?.classesUsed ?? 0,
+        review: reviews[0] || null,
     };
 };
+
 
 export const getSchedule = async (studentId: string) => {
     const slots = await prisma.scheduleSlot.findMany({
@@ -130,3 +146,37 @@ export const cancelClass = async (studentId: string, scheduleSlotId: string) => 
 
     return { success: true, message: 'Class cancelled successfully' };
 };
+
+export const submitReview = async (studentId: string, branchId: string | undefined, data: { rating: number; text?: string }) => {
+    const existing = await prisma.review.findFirst({ where: { studentId } });
+    if (existing) {
+        return await prisma.review.update({
+            where: { id: existing.id },
+            data: {
+                rating: data.rating,
+                text: data.text || null,
+                branchId: branchId || null
+            }
+        });
+    }
+
+    return await prisma.review.create({
+        data: {
+            studentId,
+            branchId: branchId || null,
+            rating: data.rating,
+            text: data.text || null,
+        }
+    });
+};
+
+export const deleteReview = async (studentId: string) => {
+    const result = await prisma.review.deleteMany({
+        where: { studentId }
+    });
+    if (result.count === 0) {
+        throw new NotFoundError('Review not found');
+    }
+    return { success: true, message: 'Review deleted successfully' };
+};
+

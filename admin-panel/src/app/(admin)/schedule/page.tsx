@@ -24,11 +24,13 @@ export default function SchedulePage() {
 
     const [dynamicTimeSlots, setDynamicTimeSlots] = useState<string[]>(["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM"]);
 
-    const fetchSettings = async () => {
+    const fetchSettings = async (branchId: string) => {
         try {
             const res = await api.get('/settings');
             if (res.data.success) {
-                const slotsSetting = res.data.data.find((s:any) => s.key === 'TIME_SLOTS');
+                let slotsSetting = res.data.data.find((s:any) => s.key === `TIME_SLOTS_${branchId}`);
+                if (!slotsSetting) slotsSetting = res.data.data.find((s:any) => s.key === 'TIME_SLOTS');
+                
                 if (slotsSetting) {
                     const parsed = JSON.parse(slotsSetting.value);
                     const activeTimes = parsed.filter((s:any) => s.active).map((s:any) => s.time);
@@ -122,8 +124,10 @@ export default function SchedulePage() {
     }, [dateStr, selectedBranch]);
 
     useEffect(() => {
-        fetchSettings();
-    }, []);
+        if (selectedBranch) {
+            fetchSettings(selectedBranch);
+        }
+    }, [selectedBranch]);
 
     const currentSchedule = scheduleMap;
     const timeSlots = dynamicTimeSlots;

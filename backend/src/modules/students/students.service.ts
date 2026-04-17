@@ -5,9 +5,17 @@ import bcrypt from 'bcryptjs';
 import { sendCredentialsEmail } from '../../utils/email';
 
 // Helper: Dynamic package pricing lookup from Settings with fallback
-const getPackageDetails = async (type: string, txClient: any = prisma) => {
-    const settingKey = `PACKAGE_${type}`;
-    const setting = await txClient.setting.findUnique({ where: { key: settingKey } });
+const getPackageDetails = async (type: string, branchId?: string, txClient: any = prisma) => {
+    let settingKey = `PACKAGE_${type}`;
+    let setting = null;
+    
+    if (branchId) {
+        setting = await txClient.setting.findUnique({ where: { key: `${settingKey}_${branchId}` } });
+    }
+    
+    if (!setting) {
+        setting = await txClient.setting.findUnique({ where: { key: settingKey } });
+    }
 
     if (setting) {
         try {
@@ -152,9 +160,12 @@ export const createStudent = async (data: any, adminBranchId: string) => {
 
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
         
-        const packageInfo = await getPackageDetails(data.packageType, tx);
+        const packageInfo = await getPackageDetails(data.packageType, branchId, tx);
         const amount = packageInfo.price;
-        const totalAmount = amount - (data.discount || 0);
+        const discountAmount = data.discount || 0;
+        const subTotal = Math.max(0, amount - discountAmount);
+        const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+        const totalAmount = subTotal + vatAmount;
 
         const startDate = new Date();
         const expiryDate = new Date();
@@ -195,9 +206,13 @@ export const createStudent = async (data: any, adminBranchId: string) => {
 
         const invoiceNumber = generateInvoiceNumber(branch.code, nextPaySequence);
         
-        const isPaid = data.paymentStatus === 'PAID';
-        const paidAmount = isPaid ? totalAmount : 0;
-        const pendingAmount = isPaid ? 0 : totalAmount;
+        let paidAmount = 0;
+        if (data.paymentStatus === 'PAID') {
+            paidAmount = totalAmount;
+        } else if (data.paymentStatus === 'PARTIAL' && data.paidAmount !== undefined) {
+            paidAmount = data.paidAmount;
+        }
+        const pendingAmount = Math.max(0, totalAmount - paidAmount);
 
         const payment = await tx.payment.create({
             data: {
@@ -294,35 +309,38 @@ export const updateStudent = async (id: string, branchId: string | undefined, da
             const newPackageType = data.packageType || existingStudent.packageType;
             const newDiscount = data.discount !== undefined ? data.discount : existingStudent.discount;
             
-            if (data.packageType || data.discount !== undefined) {
-                const packageInfo = await getPackageDetails(newPackageType, tx);
-                paymentUpdate.amount = packageInfo.price;
-                paymentUpdate.discount = newDiscount;
-                paymentUpdate.totalAmount = packageInfo.price - newDiscount;
+            if (data.packageType || data.discount !== undefined || data.paymentStatus || data.paidAmount !== undefined) {
+                if (data.packageType || data.discount !== undefined) {
+                    const packageInfo = await getPackageDetails(newPackageType, existingStudent.branchId, tx);
+                    const subTotal = Math.max(0, packageInfo.price - newDiscount);
+                    const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+                    paymentUpdate.amount = packageInfo.price;
+                    paymentUpdate.discount = newDiscount;
+                    paymentUpdate.totalAmount = subTotal + vatAmount;
+                }
                 
-                // Adjust pending amount based on status
-                const currentStatus = data.paymentStatus || lastPayment.status;
-                if (currentStatus === 'PAID') {
-                    paymentUpdate.paidAmount = paymentUpdate.totalAmount;
-                    paymentUpdate.pendingAmount = 0;
-                } else {
-                    // Keep existing paid amount, recalculate pending
-                    paymentUpdate.pendingAmount = Math.max(0, paymentUpdate.totalAmount - lastPayment.paidAmount);
-                    if (paymentUpdate.pendingAmount === 0 && lastPayment.paidAmount > 0) {
-                        paymentUpdate.status = 'PAID';
-                    }
-                }
-            }
+                const currentTotal = paymentUpdate.totalAmount !== undefined ? paymentUpdate.totalAmount : lastPayment.totalAmount;
+                const currentPaid = data.paidAmount !== undefined ? data.paidAmount : lastPayment.paidAmount;
+                const newStatus = data.paymentStatus || lastPayment.status;
 
-            if (data.paymentStatus && lastPayment.status !== data.paymentStatus) {
-                const isPaid = data.paymentStatus === 'PAID';
-                paymentUpdate.status = data.paymentStatus;
-                // If force-marking as PAID, update amounts
-                if (isPaid) {
-                    const finalTotal = paymentUpdate.totalAmount || lastPayment.totalAmount;
-                    paymentUpdate.paidAmount = finalTotal;
-                    paymentUpdate.pendingAmount = 0;
+                let finalStatus = newStatus;
+                let finalPaid = currentPaid;
+
+                if (newStatus === 'PAID') {
+                    finalPaid = currentTotal;
+                } else if (newStatus === 'PENDING') {
+                    finalPaid = 0;
                 }
+
+                const finalPending = Math.max(0, currentTotal - finalPaid);
+
+                if (finalStatus === 'PARTIAL' && finalPending === 0 && finalPaid > 0) {
+                    finalStatus = 'PAID';
+                }
+
+                if (finalStatus !== lastPayment.status) paymentUpdate.status = finalStatus;
+                if (finalPaid !== lastPayment.paidAmount) paymentUpdate.paidAmount = finalPaid;
+                if (finalPending !== lastPayment.pendingAmount) paymentUpdate.pendingAmount = finalPending;
             }
 
             if (data.packageType && lastPayment.packageType !== data.packageType) {
@@ -343,7 +361,7 @@ export const updateStudent = async (id: string, branchId: string | undefined, da
 
         // ── Update MembershipHistory when packageType changes ──────────────
         if (data.packageType && data.packageType !== existingStudent.packageType) {
-            const newPkgInfo = await getPackageDetails(data.packageType, tx);
+            const newPkgInfo = await getPackageDetails(data.packageType, existingStudent.branchId, tx);
             // Find the latest membership record for this student (any status) and update totalClasses
             const latestMembership = await tx.membershipHistory.findFirst({
                 where: { studentId: id },
@@ -397,9 +415,12 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
         const student = await tx.student.findFirstOrThrow({ where: { ...where } });
         const branch = await tx.branch.findUniqueOrThrow({ where: { id: student.branchId } });
         
-        const packageInfo = await getPackageDetails(data.packageType, tx);
+        const packageInfo = await getPackageDetails(data.packageType, student.branchId, tx);
         const amount = packageInfo.price;
-        const totalAmount = amount - (data.discount || 0);
+        const discountAmount = data.discount || 0;
+        const subTotal = Math.max(0, amount - discountAmount);
+        const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+        const totalAmount = subTotal + vatAmount;
 
         const startDate = new Date(); // Could append to existing expiryDate instead
         const expiryDate = new Date();
@@ -420,9 +441,13 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
         const paymentCount = await tx.payment.count({ where: { branchId: student.branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } } });
         const invoiceNumber = generateInvoiceNumber(branch.code, paymentCount + 1);
         
-        const isPaid = data.paymentStatus === 'PAID';
-        const paidAmount = isPaid ? totalAmount : 0;
-        const pendingAmount = isPaid ? 0 : totalAmount;
+        let paidAmount = 0;
+        if (data.paymentStatus === 'PAID') {
+            paidAmount = totalAmount;
+        } else if (data.paymentStatus === 'PARTIAL' && data.paidAmount !== undefined) {
+            paidAmount = data.paidAmount;
+        }
+        const pendingAmount = Math.max(0, totalAmount - paidAmount);
 
         await tx.payment.create({
             data: {

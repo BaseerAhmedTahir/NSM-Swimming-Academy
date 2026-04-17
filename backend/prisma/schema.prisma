@@ -38,6 +38,8 @@ model Branch {
   reminders      Reminder[]
   cancellations  Cancellation[]
   freezings      Freezing[]
+  reviews        Review[]
+  expenses       Expense[]
 }
 
 // ═══════════════════════════════════════
@@ -60,6 +62,7 @@ model Admin {
   branch       Branch?       @relation(fields: [branchId], references: [id])
   reminders    Reminder[]
   activityLogs ActivityLog[]
+  expenses     Expense[]     @relation("AdminExpenses")
   refreshTokens RefreshToken[] @relation("AdminRefreshTokens")
 }
 
@@ -109,6 +112,7 @@ model Student {
   membershipHistory  MembershipHistory[]
   classCancellations ClassCancellation[]
   coachAssignments   CoachStudentAssignment[]
+  reviews            Review[]
   refreshTokens      RefreshToken[]          @relation("StudentRefreshTokens")
 }
 
@@ -536,4 +540,48 @@ model Setting {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════
+// REVIEWS (Student Ratings)
+// ═══════════════════════════════════════
+model Review {
+  id        String   @id @default(uuid())
+  studentId String
+  branchId  String?
+  rating    Int      // 1 to 5
+  text      String?
+  createdAt DateTime @default(now())
+
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  branch  Branch?  @relation(fields: [branchId], references: [id])
+}
+
+// ═══════════════════════════════════════
+// EXPENSES (Financial Tracking)
+// ═══════════════════════════════════════
+model Expense {
+  id          String          @id @default(uuid())
+  title       String
+  category    ExpenseCategory
+  amount      Float
+  date        DateTime        @db.Date
+  branchId    String?
+  notes       String?
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  branch    Branch? @relation(fields: [branchId], references: [id])
+  createdBy Admin   @relation("AdminExpenses", fields: [createdById], references: [id])
+}
+
+enum ExpenseCategory {
+  COACH_SALARY
+  FACILITY_RENT
+  UTILITIES
+  EQUIPMENT
+  MARKETING
+  ADMIN_COST
+  OTHER
 }

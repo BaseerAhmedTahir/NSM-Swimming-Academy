@@ -57,3 +57,21 @@ export const markNotificationRead = async (req: Request, res: Response, next: Ne
         return successResponse({ res, data: null, message: 'Marked as read' });
     } catch (error) { next(error); }
 };
+
+export const submitReview = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const studentId: string = String(req.user!.id);
+        const branchId: string | undefined = req.user!.branchId ? String(req.user!.branchId) : undefined;
+        const data = await studentAppService.submitReview(studentId, branchId, req.body);
+        return successResponse({ res, data, statusCode: 201, message: 'Review submitted successfully' });
+    } catch (error) { next(error); }
+};
+
+export const deleteReview = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const studentId: string = String(req.user!.id);
+        const data = await studentAppService.deleteReview(studentId);
+        return successResponse({ res, data, message: 'Review deleted successfully' });
+    } catch (error) { next(error); }
+};
+

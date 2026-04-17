@@ -28,6 +28,9 @@ export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [branchesList, setBranchesList] = useState<any[]>([]);
+    const [allSettingsList, setAllSettingsList] = useState<any[]>([]);
+    const [selectedBranchForSlots, setSelectedBranchForSlots] = useState("");
+    const [selectedBranchForPackages, setSelectedBranchForPackages] = useState("");
     const [timeSlotsList, setTimeSlotsList] = useState<any[]>([]);
     const [packagesList, setPackagesList] = useState<any[]>([]);
 
@@ -81,6 +84,79 @@ export default function SettingsPage() {
         }
     };
 
+    const loadSlotsForBranch = (branchId: string, settings: any[]) => {
+        let slotsSetting = settings.find((s: any) => s.key === `TIME_SLOTS_${branchId}`);
+        if (!slotsSetting) slotsSetting = settings.find((s: any) => s.key === 'TIME_SLOTS');
+        if (slotsSetting) {
+            try {
+                setTimeSlotsList(JSON.parse(slotsSetting.value));
+            } catch (e) { console.error("Failed to parse time slots", e); setTimeSlotsList([]); }
+        } else {
+            setTimeSlotsList([]);
+        }
+    };
+
+    const loadPackagesForBranch = (branchId: string, settings: any[]) => {
+        const branchPrefix = `_${branchId}`;
+        let branchPackages = settings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+        
+        let packagesToUse = branchPackages;
+        if (branchPackages.length === 0) {
+            packagesToUse = settings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !s.key.includes('_' + branchId) && !branchesList.some(b => s.key.endsWith('_' + b.id)));
+        }
+
+        const dynamicPackages = packagesToUse.map((s: any) => {
+            try {
+                const val = JSON.parse(s.value);
+                let baseKey = s.key;
+                if (baseKey.endsWith(branchPrefix)) baseKey = baseKey.replace(branchPrefix, '');
+                const formattedName = baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package";
+                
+                return {
+                    id: s.id,
+                    name: formattedName,
+                    classes: val.classes,
+                    price: val.price,
+                    durationMonths: val.durationMonths || 1,
+                    popular: s.key.includes('SILVER')
+                };
+            } catch (e) { return null; }
+        }).filter(Boolean);
+        setPackagesList(dynamicPackages);
+    };
+
+    // ── Auto-save helpers — called immediately after any slot/package mutation ──
+    const autoSaveSlots = async (updatedSlots: any[]) => {
+        try {
+            const key = selectedBranchForSlots ? `TIME_SLOTS_${selectedBranchForSlots}` : 'TIME_SLOTS';
+            await api.post('/settings/bulk', { settings: [{ key, value: JSON.stringify(updatedSlots) }] });
+            toast.success("Time slots saved ✓");
+        } catch {
+            toast.error("Failed to auto-save time slots");
+        }
+    };
+
+    const autoSavePackages = async (updatedPkgs: any[]) => {
+        try {
+            const settingsPayload = updatedPkgs.map(pkg => {
+                const match = pkg.name.match(/^(.+?)\s+Package/i);
+                const prefix = match ? match[1].toUpperCase() : pkg.name.toUpperCase().replace(/\s+/g, '_');
+                return {
+                    key: selectedBranchForPackages ? `PACKAGE_${prefix}_${selectedBranchForPackages}` : `PACKAGE_${prefix}`,
+                    value: JSON.stringify({
+                        classes: parseInt(pkg.classes) || 0,
+                        price: parseFloat(pkg.price) || 0,
+                        durationMonths: parseInt(pkg.durationMonths) || 1
+                    })
+                };
+            });
+            await api.post('/settings/bulk', { settings: settingsPayload });
+            toast.success("Packages saved ✓");
+        } catch {
+            toast.error("Failed to auto-save packages");
+        }
+    };
+
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -89,39 +165,40 @@ export default function SettingsPage() {
                     api.get('/settings')
                 ]);
 
+                let branches = branchRes.data.data.results || branchRes.data.data;
                 if (branchRes.data.success) {
-                    setBranchesList(branchRes.data.data.results || branchRes.data.data);
+                    setBranchesList(branches);
                 }
 
                 if (settingsRes.data.success) {
                     const allSettings = settingsRes.data.data;
+                    setAllSettingsList(allSettings);
                     
-                    // Map Time Slots
-                    const slotsSetting = allSettings.find((s: any) => s.key === 'TIME_SLOTS');
-                    if (slotsSetting) {
-                        try {
-                            setTimeSlotsList(JSON.parse(slotsSetting.value));
-                        } catch (e) { console.error("Failed to parse time slots", e); }
-                    }
-
-                    // Map Packages
-                    const dynamicPackages = allSettings
-                        .filter((s: any) => s.key.startsWith('PACKAGE_'))
-                        .map((s: any) => {
+                    const firstBranch = branches?.[0]?.id;
+                    if (firstBranch) {
+                        setSelectedBranchForSlots(firstBranch);
+                        setSelectedBranchForPackages(firstBranch);
+                        loadSlotsForBranch(firstBranch, allSettings);
+                        // We need to pass branches so loadPackagesForBranch can reliably filter globals
+                        // But branchesList state might not be updated yet, so we use branches directly inside it later if refactored
+                        // Actually, we can just use the straightforward fallback mechanism
+                        
+                        // Refined local logic for packages fallback to avoid branchesList dependency issues
+                        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(`_${firstBranch}`));
+                        let packagesToUse = branchPackages;
+                        if (branchPackages.length === 0) {
+                            packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b:any) => s.key.endsWith('_' + b.id)));
+                        }
+                        const dynamicPackages = packagesToUse.map((s: any) => {
                             try {
                                 const val = JSON.parse(s.value);
-                                return {
-                                    id: s.id,
-                                    name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
-                                    classes: val.classes,
-                                    price: val.price,
-                                    popular: s.key === 'PACKAGE_SILVER'
-                                };
+                                let baseKey = s.key.replace(`_${firstBranch}`, '');
+                                const formattedName = baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package";
+                                return { id: s.id, name: formattedName, classes: val.classes, price: val.price, durationMonths: val.durationMonths || 1, popular: s.key.includes('SILVER') };
                             } catch (e) { return null; }
-                        })
-                        .filter(Boolean);
-                    
-                    if (dynamicPackages.length > 0) setPackagesList(dynamicPackages);
+                        }).filter(Boolean);
+                        setPackagesList(dynamicPackages);
+                    }
                 }
             } catch (err) { console.error(err); }
         };
@@ -132,12 +209,12 @@ export default function SettingsPage() {
         setIsSaving(true);
         try {
             const settingsPayload = [
-                { key: 'TIME_SLOTS', value: JSON.stringify(timeSlotsList) },
+                { key: selectedBranchForSlots ? `TIME_SLOTS_${selectedBranchForSlots}` : 'TIME_SLOTS', value: JSON.stringify(timeSlotsList) },
                 ...packagesList.map(pkg => {
                     const match = pkg.name.match(/^(.+?)\s+Package/i);
                     const prefix = match ? match[1].toUpperCase() : pkg.name.toUpperCase().replace(/\s+/g, '_');
                     return {
-                        key: `PACKAGE_${prefix}`,
+                        key: selectedBranchForPackages ? `PACKAGE_${prefix}_${selectedBranchForPackages}` : `PACKAGE_${prefix}`,
                         value: JSON.stringify({
                             classes: parseInt(pkg.classes) || 0,
                             price: parseFloat(pkg.price) || 0,
@@ -149,11 +226,12 @@ export default function SettingsPage() {
             await Promise.all([
                 api.post('/settings/bulk', { settings: settingsPayload }),
                 ...branchesList.map(branch => {
+                    const name = (document.getElementById(`name-${branch.id}`) as HTMLInputElement)?.value || branch.name;
                     const phone = (document.getElementById(`phone-${branch.id}`) as HTMLInputElement)?.value || branch.phone;
                     const email = (document.getElementById(`email-${branch.id}`) as HTMLInputElement)?.value || branch.email;
                     const address = (document.getElementById(`address-${branch.id}`) as HTMLInputElement)?.value || branch.address;
                     const trn = (document.getElementById(`trn-${branch.id}`) as HTMLInputElement)?.value || branch.trn;
-                    return api.put(`/branches/${branch.id}`, { phone, email, address, trn, permissions: branch.permissions });
+                    return api.put(`/branches/${branch.id}`, { name, phone, email, address, trn, permissions: branch.permissions });
                 })
             ]);
             toast.success("Settings saved successfully");
@@ -221,14 +299,17 @@ export default function SettingsPage() {
 
         const formattedTime = `${formatTime(newSlotStartTime)} - ${formatTime(newSlotEndTime)}`;
 
+        let updatedSlots: any[];
         if (editingSlotId) {
-            setTimeSlotsList(timeSlotsList.map(s => s.id === editingSlotId ? { ...s, time: formattedTime, type: finalType } : s));
+            updatedSlots = timeSlotsList.map(s => s.id === editingSlotId ? { ...s, time: formattedTime, type: finalType } : s);
             setEditingSlotId(null);
-            toast.success("Time slot updated successfully");
+            toast.success("Time slot updated");
         } else {
-            setTimeSlotsList([...timeSlotsList, { id: Date.now(), time: formattedTime, type: finalType, active: true }]);
-            toast.success("Time slot added to grid");
+            updatedSlots = [...timeSlotsList, { id: Date.now(), time: formattedTime, type: finalType, active: true }];
         }
+
+        setTimeSlotsList(updatedSlots);
+        autoSaveSlots(updatedSlots);
 
         setNewSlotStartTime("");
         setNewSlotEndTime("");
@@ -241,7 +322,7 @@ export default function SettingsPage() {
         setNewSlotStartTime("");
         setNewSlotEndTime("");
         
-        const knownTypes = ["Kids", "Adults", "Toddlers", "Kids / Adults"];
+        const knownTypes = ["All (Open)", "Kids", "Adults", "Toddlers", "Kids / Adults"];
         if (knownTypes.includes(slot.type)) {
             setNewSlotType(slot.type);
             setNewSlotTypeCustom("");
@@ -252,23 +333,34 @@ export default function SettingsPage() {
         toast.info("Select Start/End time to overwrite this slot");
     };
 
-    const handleAddPackage = () => {
+    const handleAddPackage = async () => {
         if (!newPkgName || !newPkgClasses || !newPkgPrice) return toast.error("Fill all package fields");
+        let updatedPkgs: any[];
+        const finalName = newPkgName.includes("Package") ? newPkgName : newPkgName + " Package";
+
         if (editingPkgId) {
-            setPackagesList(packagesList.map(p => p.id === editingPkgId ? { ...p, name: newPkgName.includes("Package") ? newPkgName : newPkgName + " Package", classes: parseInt(newPkgClasses), price: parseFloat(newPkgPrice), durationMonths: parseInt(newPkgDuration) || 1 } : p));
+            const oldPkg = packagesList.find(p => p.id === editingPkgId);
+            if (oldPkg && oldPkg.name !== finalName) {
+                const oldMatch = oldPkg.name.match(/^(.+?)\s+Package/i);
+                const oldPrefix = oldMatch ? oldMatch[1].toUpperCase() : oldPkg.name.toUpperCase().replace(/\s+/g, '_');
+                const oldKey = selectedBranchForPackages ? `PACKAGE_${oldPrefix}_${selectedBranchForPackages}` : `PACKAGE_${oldPrefix}`;
+                try { await api.delete(`/settings/${oldKey}`); } catch (e) { console.error("Failed to delete stale package key"); }
+            }
+            updatedPkgs = packagesList.map(p => p.id === editingPkgId ? { ...p, name: finalName, classes: parseInt(newPkgClasses), price: parseFloat(newPkgPrice), durationMonths: parseInt(newPkgDuration) || 1 } : p);
             setEditingPkgId(null);
-            toast.success("Package updated successfully");
+            toast.success("Package updated");
         } else {
-            setPackagesList([...packagesList, { 
+            updatedPkgs = [...packagesList, { 
                     id: Date.now(), 
-                    name: newPkgName.includes("Package") ? newPkgName : newPkgName + " Package", 
+                    name: finalName, 
                     classes: parseInt(newPkgClasses), 
                     price: parseFloat(newPkgPrice),
                     durationMonths: parseInt(newPkgDuration) || 1,
                     popular: false 
-                }]);
-            toast.success("Package created successfully");
+                }];
         }
+        setPackagesList(updatedPkgs);
+        autoSavePackages(updatedPkgs);
         setNewPkgName("");
         setNewPkgClasses("");
         setNewPkgPrice("");
@@ -286,19 +378,15 @@ export default function SettingsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
 
-            {/* Header */}
+            {/* Header — Save Global Settings removed, now auto-saved per section */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
                         <Settings2 className="w-8 h-8 text-primary" />
                         System Settings
                     </h1>
-                    <p className="text-muted-foreground mt-1">Configure academy branches, scheduling slots, and financial packages.</p>
+                    <p className="text-muted-foreground mt-1">Configure academy branches, scheduling slots, and financial packages. Slots and packages auto-save.</p>
                 </div>
-
-                <Button onClick={handleSave} disabled={isSaving} className="font-bold shadow-sm gap-2">
-                    <Save className="w-4 h-4" /> {isSaving ? "Saving Config..." : "Save Global Settings"}
-                </Button>
             </div>
 
             <Tabs defaultValue="branches" className="w-full">
@@ -335,7 +423,11 @@ export default function SettingsPage() {
                                 <div key={branch.id} className="p-4 rounded-xl border border-border/50 bg-muted/10 grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-bold text-foreground text-lg">{branch.name}</h4>
+                                            <Input 
+                                                id={`name-${branch.id}`}
+                                                defaultValue={branch.name} 
+                                                className="h-9 font-bold text-foreground text-lg border-primary/20 focus-visible:ring-primary" 
+                                            />
                                             {branch.name.includes("Dubai") && <span className="text-[10px] font-black uppercase bg-primary text-white px-1.5 rounded">HQ</span>}
                                         </div>
                                         {/* <div className="flex items-center gap-2 mt-2">
@@ -432,11 +524,12 @@ export default function SettingsPage() {
                                             size="sm" 
                                             className="font-bold bg-primary hover:bg-primary/90"
                                             onClick={() => {
+                                                const name = (document.getElementById(`name-${branch.id}`) as HTMLInputElement).value;
                                                 const phone = (document.getElementById(`phone-${branch.id}`) as HTMLInputElement).value;
                                                 const email = (document.getElementById(`email-${branch.id}`) as HTMLInputElement).value;
                                                 const address = (document.getElementById(`address-${branch.id}`) as HTMLInputElement).value;
                                                 const trn = (document.getElementById(`trn-${branch.id}`) as HTMLInputElement).value;
-                                                handleUpdateBranch(branch.id, { phone, email, address, trn, permissions: branch.permissions });
+                                                handleUpdateBranch(branch.id, { name, phone, email, address, trn, permissions: branch.permissions });
                                             }}
                                             disabled={isSaving}
                                         >
@@ -456,7 +549,20 @@ export default function SettingsPage() {
 
                         <div className="p-6 border-b lg:border-b-0 lg:border-r border-border/50 bg-muted/20 lg:w-1/3">
                             <h3 className="text-lg font-black text-foreground mb-1">Schedule Architecture</h3>
-                            <p className="text-sm text-muted-foreground mb-6">Define the standard operating hours and recurring class intervals used in the Schedule grid.</p>
+                            <p className="text-sm text-muted-foreground mb-4">Define the standard operating hours and recurring class intervals used in the Schedule grid.</p>
+
+                            <div className="mb-6 space-y-2">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase">Configure for Branch</Label>
+                                <Select value={selectedBranchForSlots} onValueChange={(val) => {
+                                    setSelectedBranchForSlots(val);
+                                    loadSlotsForBranch(val, allSettingsList);
+                                }}>
+                                    <SelectTrigger className="bg-white"><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                                    <SelectContent>
+                                        {branchesList.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
@@ -474,10 +580,11 @@ export default function SettingsPage() {
                                     <Select value={newSlotType} onValueChange={setNewSlotType}>
                                         <SelectTrigger><SelectValue placeholder="Select allowed groups" /></SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="All (Open)">All — Open to Everyone</SelectItem>
                                             <SelectItem value="Kids">Kids</SelectItem>
                                             <SelectItem value="Adults">Adults</SelectItem>
                                             <SelectItem value="Toddlers">Toddlers</SelectItem>
-                                            <SelectItem value="Kids / Adults">Kids & Adults</SelectItem>
+                                            <SelectItem value="Kids / Adults">Kids &amp; Adults</SelectItem>
                                             <SelectItem value="Custom">Custom Text...</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -518,11 +625,19 @@ export default function SettingsPage() {
                                             <TableCell className="font-black text-foreground">{slot.time}</TableCell>
                                             <TableCell className="font-medium text-muted-foreground">{slot.type}</TableCell>
                                             <TableCell className="text-center">
-                                                <Switch checked={slot.active} onCheckedChange={(checked) => setTimeSlotsList(timeSlotsList.map(s => s.id === slot.id ? { ...s, active: checked } : s))} />
+                                                <Switch checked={slot.active} onCheckedChange={(checked) => {
+                                        const updated = timeSlotsList.map(s => s.id === slot.id ? { ...s, active: checked } : s);
+                                        setTimeSlotsList(updated);
+                                        autoSaveSlots(updated);
+                                    }} />
                                             </TableCell>
                                             <TableCell className="text-right flex justify-end gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditSlot(slot)} className="text-muted-foreground hover:text-primary"><Edit className="w-4 h-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setTimeSlotsList(timeSlotsList.filter(s => s.id !== slot.id))} className="text-muted-foreground hover:bg-error/10 hover:text-error"><Trash2 className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => {
+                                        const filtered = timeSlotsList.filter(s => s.id !== slot.id);
+                                        setTimeSlotsList(filtered);
+                                        autoSaveSlots(filtered);
+                                    }} className="text-muted-foreground hover:bg-error/10 hover:text-error"><Trash2 className="w-4 h-4" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -539,7 +654,20 @@ export default function SettingsPage() {
 
                         <div className="p-6 border-b lg:border-b-0 lg:border-l border-border/50 bg-primary/5 lg:w-1/3 border-primary/20">
                             <h3 className="text-lg font-black text-primaryDark mb-1">Create New Package</h3>
-                            <p className="text-sm text-muted-foreground mb-6">Add a new financial tier or promo package.</p>
+                            <p className="text-sm text-muted-foreground mb-4">Add a new financial tier or promo package.</p>
+
+                            <div className="mb-6 space-y-2">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase">Configure for Branch</Label>
+                                <Select value={selectedBranchForPackages} onValueChange={(val) => {
+                                    setSelectedBranchForPackages(val);
+                                    loadPackagesForBranch(val, allSettingsList);
+                                }}>
+                                    <SelectTrigger className="bg-white"><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                                    <SelectContent>
+                                        {branchesList.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -597,7 +725,19 @@ export default function SettingsPage() {
                                             <TableCell className="text-right font-black text-foreground">AED {pkg.price}</TableCell>
                                             <TableCell className="text-right flex justify-end gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="text-muted-foreground hover:text-primary"><Edit className="w-4 h-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setPackagesList(packagesList.filter(p => p.id !== pkg.id))} className="text-muted-foreground hover:text-error"><Trash2 className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={async () => {
+                                                    const match = pkg.name.match(/^(.+?)\s+Package/i);
+                                                    const prefix = match ? match[1].toUpperCase() : pkg.name.toUpperCase().replace(/\s+/g, '_');
+                                                    const key = selectedBranchForPackages ? `PACKAGE_${prefix}_${selectedBranchForPackages}` : `PACKAGE_${prefix}`;
+                                                    try {
+                                                        await api.delete(`/settings/${key}`);
+                                                        const filtered = packagesList.filter(p => p.id !== pkg.id);
+                                                        setPackagesList(filtered);
+                                                        toast.success("Package deleted successfully");
+                                                    } catch (e) {
+                                                        toast.error("Failed to delete package from server");
+                                                    }
+                                                }} className="text-muted-foreground hover:text-error"><Trash2 className="w-4 h-4" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

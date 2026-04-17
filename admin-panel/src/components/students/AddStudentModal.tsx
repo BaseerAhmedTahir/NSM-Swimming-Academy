@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit, FileText } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -20,14 +19,18 @@ interface AddStudentModalProps {
     isEditMode?: boolean;
 }
 
+const VAT_RATE = 0.05;
 
+const KNOWN_LEVELS = ["T1", "T2", "T3", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"];
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess, initialData, isEditMode = false }: AddStudentModalProps) {
     const { user } = useAuth();
     const [branches, setBranches] = useState<any[]>([]);
+    const [allSettings, setAllSettings] = useState<any[]>([]);
     const [dynamicPackages, setDynamicPackages] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    
+    const [customLevelText, setCustomLevelText] = useState("");
+
     const [formData, setFormData] = useState({
         name: "",
         age: 5,
@@ -41,21 +44,34 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         packageType: "SILVER",
         paymentMode: "CARD",
         paymentStatus: "PAID",
+        paidAmount: 0,
         startDate: new Date().toISOString().split('T')[0],
         expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
         trn: ""
     });
 
+    // Financial calculations
     const activeItem = dynamicPackages.find(p => p.id === formData.packageType);
     const currentPrice = activeItem ? activeItem.price : 0;
-    const totalPrice = Math.max(0, currentPrice - formData.discount);
+    const priceAfterDiscount = Math.max(0, currentPrice - formData.discount);
+    const vatAmount = parseFloat((priceAfterDiscount * VAT_RATE).toFixed(2));
+    const totalPrice = parseFloat((priceAfterDiscount + vatAmount).toFixed(2));
+    const remainingAmount = formData.paymentStatus === 'PARTIAL'
+        ? parseFloat(Math.max(0, totalPrice - formData.paidAmount).toFixed(2))
+        : 0;
+
+    // Derived: selected branch TRN
+    const selectedBranchObj = branches.find(b => b.id === formData.branchId);
+    const branchTrn = selectedBranchObj?.trn || "";
+
+    // Is the level a custom one (not in KNOWN_LEVELS)?
+    const isCustomLevel = formData.level === 'CUSTOM' || (!KNOWN_LEVELS.includes(formData.level) && formData.level !== '');
 
     useEffect(() => {
         if (isOpen) {
             api.get('/branches').then(res => {
                 const data = res.data.data.results || res.data.data;
                 setBranches(data);
-                // For STAFF: always force their own branchId. For SUPER_ADMIN: default to first branch.
                 if (!formData.branchId) {
                     const defaultBranch = user?.role === 'STAFF' && user?.branchId
                         ? user.branchId
@@ -64,33 +80,70 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 }
             }).catch(console.error);
             api.get('/settings').then(res => {
-                if (res.data.success) {
-                    const pkgs = res.data.data.filter((s:any) => s.key.startsWith('PACKAGE_')).map((s:any) => {
-                        const parsed = JSON.parse(s.value);
-                        return {
-                            id: s.key.replace('PACKAGE_', ''),
-                            name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
-                            classes: parsed.classes,
-                            price: parsed.price,
-                            durationMonths: parsed.durationMonths || 1
-                        };
-                    });
-                    if(pkgs.length > 0) {
-                        setDynamicPackages(pkgs);
-                        // Auto-correct packageType: if the current default ('SILVER') 
-                        // is not in the loaded packages, switch to the first available package
-                        setFormData(prev => {
-                            const isValid = pkgs.some((p: any) => p.id === prev.packageType);
-                            return isValid ? prev : { ...prev, packageType: pkgs[0].id };
-                        });
-                    }
-                }
+                if (res.data.success) setAllSettings(res.data.data);
             }).catch(console.error);
         }
     }, [isOpen]);
 
     useEffect(() => {
+        if (!allSettings.length || !formData.branchId || branches.length === 0) return;
+        const branchId = formData.branchId;
+        const branchPrefix = `_${branchId}`;
+
+        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+        let packagesToUse = branchPackages;
+
+        if (branchPackages.length === 0) {
+            packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b: any) => s.key.endsWith('_' + b.id)));
+        }
+
+        const pkgs = packagesToUse.map((s: any) => {
+            const parsed = JSON.parse(s.value);
+            let baseKey = s.key.replace(branchPrefix, '');
+            return {
+                id: baseKey.replace('PACKAGE_', ''),
+                name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
+                classes: parsed.classes,
+                price: parsed.price,
+                durationMonths: parsed.durationMonths || 1
+            };
+        });
+
+        if (pkgs.length > 0) {
+            setDynamicPackages(pkgs);
+            setFormData(prev => {
+                const isValid = pkgs.some((p: any) => p.id === prev.packageType);
+                const selectedPkg = pkgs.find((p: any) => p.id === prev.packageType) || pkgs[0];
+                const months = selectedPkg?.durationMonths || 1;
+                const start = new Date(prev.startDate || new Date());
+                const expiry = new Date(start);
+                expiry.setMonth(expiry.getMonth() + months);
+                return {
+                    ...prev,
+                    packageType: isValid ? prev.packageType : pkgs[0].id,
+                    expiryDate: expiry.toISOString().split('T')[0]
+                };
+            });
+        }
+    }, [allSettings, formData.branchId, branches]);
+
+    // Auto-recalculate expiry when package type or start date changes (add mode only)
+    useEffect(() => {
+        if (isEditMode || dynamicPackages.length === 0) return;
+        const selectedPkg = dynamicPackages.find((p: any) => p.id === formData.packageType);
+        if (!selectedPkg) return;
+        const months = selectedPkg.durationMonths || 1;
+        const start = new Date(formData.startDate || new Date());
+        const expiry = new Date(start);
+        expiry.setMonth(expiry.getMonth() + months);
+        setFormData(prev => ({ ...prev, expiryDate: expiry.toISOString().split('T')[0] }));
+    }, [formData.packageType, formData.startDate, dynamicPackages]);
+
+    useEffect(() => {
+
         if (initialData && isEditMode) {
+            const level = initialData.level || "K2";
+            const isCustom = !KNOWN_LEVELS.includes(level);
             setFormData({
                 name: initialData.name || "",
                 age: initialData.age || 5,
@@ -100,16 +153,19 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 gender: initialData.gender || "MALE",
                 category: initialData.category || "KID",
                 branchId: initialData.branchId || "",
-                level: initialData.level || "K2",
+                level: isCustom ? "CUSTOM" : level,
                 packageType: initialData.packageType || "SILVER",
                 paymentMode: initialData.paymentMode || "CARD",
                 paymentStatus: initialData.paymentStatus || "PAID",
+                paidAmount: initialData.paidAmount ?? 0,
                 startDate: initialData.membershipStartDate ? new Date(initialData.membershipStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                 expiryDate: initialData.membershipExpiryDate ? new Date(initialData.membershipExpiryDate).toISOString().split('T')[0] : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
                 trn: initialData.trn || ""
             });
+            if (isCustom) setCustomLevelText(level);
         } else if (!isEditMode) {
-             setFormData({
+            setCustomLevelText("");
+            setFormData({
                 name: "",
                 age: 5,
                 email: "",
@@ -117,12 +173,12 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 discount: 0,
                 gender: "MALE",
                 category: "KID",
-                // STAFF always use their own branch. SUPER_ADMIN uses first in list.
                 branchId: user?.role === 'STAFF' && user?.branchId ? user.branchId : branches[0]?.id || '',
                 level: "K2",
                 packageType: "SILVER",
                 paymentMode: "CARD",
                 paymentStatus: "PAID",
+                paidAmount: 0,
                 startDate: new Date().toISOString().split('T')[0],
                 expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
                 trn: ""
@@ -133,43 +189,52 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Manual validation for Phone (ensure it's more than just the prefix)
         if (!formData.phone || formData.phone.trim() === "+971") {
             toast.error("Please enter a valid phone number");
             return;
         }
-
-        // Check if phone has enough digits (e.g., at least 7 digits after prefix)
         const digitsOnly = formData.phone.replace(/\D/g, '');
-        if (digitsOnly.length < 10) { // +971 (3) + 7 digits = 10
+        if (digitsOnly.length < 10) {
             toast.error("Phone number seems too short. Please provide a full number.");
             return;
         }
-
         if (!formData.paymentStatus) {
             toast.error("Please select a Fee Status");
             return;
         }
+        if (formData.level === 'CUSTOM' && !customLevelText.trim()) {
+            toast.error("Please enter a custom level name");
+            return;
+        }
+        if (formData.paymentStatus === 'PARTIAL' && formData.paidAmount <= 0) {
+            toast.error("Please enter the amount paid for partial payment");
+            return;
+        }
+
+        const finalLevel = formData.level === 'CUSTOM' ? customLevelText.trim() : formData.level;
 
         setIsLoading(true);
         try {
-            // Fields allowed for update/creation
             const baseData: any = {
                 name: formData.name,
                 age: formData.age,
                 gender: formData.gender,
                 email: formData.email,
                 phone: formData.phone,
-                level: formData.level,
+                level: finalLevel,
                 category: formData.category,
                 discount: formData.discount,
                 branchId: formData.branchId,
                 paymentStatus: formData.paymentStatus,
                 trn: formData.trn,
+                vatAmount,
             };
 
+            if (formData.paymentStatus === 'PARTIAL') {
+                baseData.paidAmount = formData.paidAmount;
+            }
+
             if (isEditMode) {
-                // For editing, include package and dates
                 const updateData = {
                     ...baseData,
                     packageType: formData.packageType,
@@ -188,39 +253,22 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                     password: 'nsm' + (formData.phone.replace(/\s/g, '').slice(-4) || '1234')
                 };
                 const res = await api.post('/students', createData);
-                const emailStatus = res.data.data.emailResult?.success 
-                    ? "Welcome email sent successfully!" 
+                const emailStatus = res.data.data.emailResult?.success
+                    ? "Welcome email sent!"
                     : `Student added, but email failed: ${res.data.data.emailResult?.error || 'Unknown error'}`;
-                
                 toast.success(`Student added! ${emailStatus}`);
             }
             if (onSuccess) onSuccess();
             onClose();
         } catch (err: any) {
-            console.error("Student save error object:", err);
-            
             const errorData = err.response?.data;
             let errorMessage = "Failed to save student.";
-
-            if (errorData && typeof errorData === 'object' && Object.keys(errorData).length > 0) {
-                if (errorData.error?.details && Array.isArray(errorData.error.details)) {
-                    // Handle Zod validation details
-                    errorMessage = errorData.error.details.map((d: any) => {
-                        const field = d.path[d.path.length - 1];
-                        return `${field}: ${d.message}`;
-                    }).join(" | ");
-                } else {
-                    errorMessage = errorData.message || errorData.error?.code || err.message || errorMessage;
-                }
-            } else if (err.response?.status === 404) {
-                errorMessage = "API endpoint not found (404). Please check backend connection.";
-            } else if (err.message) {
-                errorMessage = err.message;
+            if (errorData?.error?.details && Array.isArray(errorData.error.details)) {
+                errorMessage = errorData.error.details.map((d: any) => `${d.path[d.path.length - 1]}: ${d.message}`).join(" | ");
+            } else {
+                errorMessage = errorData?.message || err.message || errorMessage;
             }
-
-            toast.error(errorMessage, {
-                duration: 6000
-            });
+            toast.error(errorMessage, { duration: 6000 });
         } finally {
             setIsLoading(false);
         }
@@ -247,7 +295,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
 
                     <div className="p-4 border-t border-slate-100">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Left Column: Personal and Academy Details */}
+                            {/* Left Column */}
                             <div className="space-y-6">
                                 {/* Section 1: Personal Information */}
                                 <div className="space-y-3">
@@ -258,21 +306,20 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div className="space-y-1 md:col-span-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Full Name <span className="text-red-500">*</span></Label>
-                                            <Input 
-                                                className="h-9 bg-white border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all" 
-                                                placeholder="e.g. Ziad Ahmed" 
+                                            <Input
+                                                className="h-9 bg-white border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all"
+                                                placeholder="e.g. Ziad Ahmed"
                                                 value={formData.name}
                                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                                required 
+                                                required
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 md:col-span-1">
                                             <div className="space-y-1">
                                                 <Label className="text-xs font-bold text-[#0B213F]">Age</Label>
-                                                <Input 
-                                                    className="h-9 bg-white border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all text-center pr-2" 
-                                                    type="number" 
-                                                    placeholder="5" 
+                                                <Input
+                                                    className="h-9 bg-white border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all text-center pr-2"
+                                                    type="number" placeholder="5"
                                                     value={formData.age}
                                                     onChange={(e) => setFormData({...formData, age: Number(e.target.value)})}
                                                 />
@@ -290,35 +337,33 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                         </div>
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Email <span className="text-red-500">*</span></Label>
-                                            <Input 
-                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all" 
-                                                type="email" 
-                                                placeholder="parent@example.com" 
+                                            <Input
+                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all"
+                                                type="email" placeholder="parent@example.com"
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                                required 
+                                                required
                                             />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="space-y-1">
                                                 <Label className="text-xs font-bold text-[#0B213F]">Phone (WhatsApp) <span className="text-red-500">*</span></Label>
-                                                <Input 
-                                                    className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all" 
-                                                    placeholder="+971 50 123 4567" 
+                                                <Input
+                                                    className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all"
+                                                    placeholder="+971 50 123 4567"
                                                     value={formData.phone}
                                                     onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        const filtered = val.replace(/[^\d+ ]/g, '');
+                                                        const filtered = e.target.value.replace(/[^\d+ ]/g, '');
                                                         setFormData({...formData, phone: filtered});
                                                     }}
-                                                    required 
+                                                    required
                                                 />
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-xs font-bold text-[#0B213F]">TRN (Tax Number)</Label>
-                                                <Input 
-                                                    className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all" 
-                                                    placeholder="100xxxxxxxxxxxx" 
+                                                <Input
+                                                    className="h-9 bg-[#f8fafc] border-[#B2C5E0] focus-visible:ring-[#1C5CAA] focus-visible:border-[#1C5CAA] rounded-xl text-sm font-medium shadow-sm transition-all"
+                                                    placeholder="100xxxxxxxxxxxx"
                                                     value={formData.trn}
                                                     onChange={(e) => setFormData({...formData, trn: e.target.value})}
                                                 />
@@ -331,13 +376,12 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                 <div className="space-y-3">
                                     <h3 className="text-[13px] font-black text-[#0B213F] flex items-center gap-2">
                                         <span className="w-[22px] h-[22px] rounded-full bg-blue-100 text-[#1C5CAA] flex items-center justify-center text-[11px]">2</span>
-                                        Academy & Enrollment
+                                        Academy &amp; Enrollment
                                     </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Branch</Label>
                                             {user?.role === 'STAFF' ? (
-                                                // STAFF: read-only badge showing their branch
                                                 <div className="h-9 bg-blue-50 border border-[#B2C5E0] rounded-xl px-3 flex items-center">
                                                     <span className="text-sm font-semibold text-[#1C5CAA]">
                                                         {branches.find(b => b.id === formData.branchId)?.name || 'Loading...'}
@@ -345,7 +389,6 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                                     <span className="ml-2 text-xs text-blue-400">(Your branch)</span>
                                                 </div>
                                             ) : (
-                                                // SUPER_ADMIN: full dropdown
                                                 <Select value={formData.branchId} onValueChange={(v) => setFormData({...formData, branchId: v})}>
                                                     <SelectTrigger className="h-9 bg-white border-[#B2C5E0] shadow-sm rounded-xl font-medium"><SelectValue placeholder="Select Branch" /></SelectTrigger>
                                                     <SelectContent>
@@ -355,50 +398,85 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                                     </SelectContent>
                                                 </Select>
                                             )}
+                                            {/* Branch TRN display */}
+                                            {branchTrn && (
+                                                <p className="text-[11px] text-[#1C5CAA] font-bold mt-1 flex items-center gap-1">
+                                                    <span className="bg-blue-50 border border-blue-200 rounded px-2 py-0.5">
+                                                        Branch TRN: <span className="font-black">{branchTrn}</span>
+                                                    </span>
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Swimming Level</Label>
-                                            <Select value={formData.level} onValueChange={(v) => setFormData({...formData, level: v})}>
+                                            <Select value={formData.level === 'CUSTOM' ? 'CUSTOM' : (KNOWN_LEVELS.includes(formData.level) ? formData.level : 'CUSTOM')} onValueChange={(v) => {
+                                                setFormData({...formData, level: v});
+                                                if (v !== 'CUSTOM') setCustomLevelText("");
+                                            }}>
                                                 <SelectTrigger className="h-9 bg-white border-[#B2C5E0] shadow-sm rounded-xl font-medium"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="T1">Toddler 1 (T1)</SelectItem>
+                                                    <SelectItem value="T2">Toddler 2 (T2)</SelectItem>
+                                                    <SelectItem value="T3">Toddler 3 (T3)</SelectItem>
                                                     <SelectItem value="K1">Kids 1 (K1)</SelectItem>
                                                     <SelectItem value="K2">Kids 2 (K2)</SelectItem>
+                                                    <SelectItem value="K3">Kids 3 (K3)</SelectItem>
+                                                    <SelectItem value="K4">Kids 4 (K4)</SelectItem>
+                                                    <SelectItem value="K5">Kids 5 (K5)</SelectItem>
+                                                    <SelectItem value="K6">Kids 6 (K6)</SelectItem>
+                                                    <SelectItem value="K7">Kids 7 (K7)</SelectItem>
+                                                    <SelectItem value="K8">Kids 8 (K8)</SelectItem>
                                                     <SelectItem value="A1">Adults 1 (A1)</SelectItem>
+                                                    <SelectItem value="A2">Adults 2 (A2)</SelectItem>
+                                                    <SelectItem value="A3">Adults 3 (A3)</SelectItem>
+                                                    <SelectItem value="A4">Adults 4 (A4)</SelectItem>
+                                                    <SelectItem value="A5">Adults 5 (A5)</SelectItem>
+                                                    <SelectItem value="A6">Adults 6 (A6)</SelectItem>
+                                                    <SelectItem value="A7">Adults 7 (A7)</SelectItem>
+                                                    <SelectItem value="A8">Adults 8 (A8)</SelectItem>
+                                                    <SelectItem value="CUSTOM">✏️ Custom Level...</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            {(formData.level === 'CUSTOM' || isCustomLevel) && (
+                                                <Input
+                                                    className="h-9 mt-1 bg-white border-[#B2C5E0] rounded-xl text-sm font-medium"
+                                                    placeholder="e.g. Advanced Adults, Private"
+                                                    value={customLevelText}
+                                                    onChange={(e) => setCustomLevelText(e.target.value)}
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 mt-1">
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Starting Date</Label>
-                                            <Input 
-                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] px-3 text-sm font-medium shadow-sm rounded-xl" 
-                                                type="date" 
+                                            <Input
+                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] px-3 text-sm font-medium shadow-sm rounded-xl"
+                                                type="date"
                                                 value={formData.startDate}
                                                 onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                                                required 
+                                                required
                                             />
                                         </div>
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Expiry Date</Label>
-                                            <Input 
-                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] px-3 text-sm font-medium shadow-sm rounded-xl" 
-                                                type="date" 
+                                            <Input
+                                                className="h-9 bg-[#f8fafc] border-[#B2C5E0] px-3 text-sm font-medium shadow-sm rounded-xl"
+                                                type="date"
                                                 value={formData.expiryDate}
                                                 onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
-                                                required 
+                                                required
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Right Column: Package and Financials */}
+                            {/* Right Column: Package & Financials */}
                             <div className="space-y-6">
                                 <h3 className="text-[13px] font-black text-[#0B213F] flex items-center gap-2">
                                     <span className="w-[22px] h-[22px] rounded-full bg-blue-100 text-[#1C5CAA] flex items-center justify-center text-[11px]">3</span>
-                                    Package & Financials
+                                    Package &amp; Financials
                                 </h3>
 
                                 <div className="grid grid-cols-1 gap-3">
@@ -437,44 +515,75 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                         </div>
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Fee Status <span className="text-red-500">*</span></Label>
-                                            <Select value={formData.paymentStatus} onValueChange={(v) => setFormData({...formData, paymentStatus: v})}>
+                                            <Select value={formData.paymentStatus} onValueChange={(v) => setFormData({...formData, paymentStatus: v, paidAmount: 0})}>
                                                 <SelectTrigger className="h-9 bg-[#f8fafc] border-[#B2C5E0] shadow-sm rounded-xl font-medium"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="PAID">Paid</SelectItem>
+                                                    <SelectItem value="PARTIAL">Partial Payment</SelectItem>
                                                     <SelectItem value="PENDING">Pending</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                     </div>
+
+                                    {/* Partial Payment Amount */}
+                                    {formData.paymentStatus === 'PARTIAL' && (
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-bold text-orange-600">Amount Paid Now (AED) <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                className="h-9 bg-orange-50 border-orange-200 focus-visible:ring-orange-400 rounded-xl text-sm font-medium shadow-sm"
+                                                type="number"
+                                                placeholder="0.00"
+                                                min={0}
+                                                max={totalPrice}
+                                                value={formData.paidAmount || ""}
+                                                onChange={(e) => setFormData({...formData, paidAmount: parseFloat(e.target.value) || 0})}
+                                            />
+                                        </div>
+                                    )}
+
                                     <div className="space-y-1">
                                         <Label className="text-xs font-bold text-[#0B213F]">Discount (AED)</Label>
-                                        <Input 
-                                            className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl text-muted-foreground" 
-                                            type="number" 
-                                            placeholder="0" 
+                                        <Input
+                                            className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl text-muted-foreground"
+                                            type="number" placeholder="0"
                                             value={formData.discount}
                                             onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})}
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    {/* Financial Summary Box */}
-                                    <div className="bg-white p-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(30,58,138,0.15)] border border-slate-100 space-y-2 relative overflow-hidden">
-                                        <div className="flex justify-between text-[13px] font-bold text-[#476082]">
-                                            <span>Package Price:</span>
-                                            <span className="text-[#0B213F]">AED {currentPrice}</span>
-                                        </div>
-                                        <div className="flex justify-between text-[13px] font-bold text-[#476082]">
-                                            <span>Discount:</span>
-                                            <span className="text-red-500">- AED {formData.discount}</span>
-                                        </div>
-                                        <div className="h-px bg-slate-200 w-full my-3" />
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-black text-[#0B213F]">Total Amount:</span>
-                                            <span className="font-black text-[#1C5CAA] text-lg uppercase">AED {totalPrice}</span>
-                                        </div>
+                                {/* Financial Summary Box */}
+                                <div className="bg-white p-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(30,58,138,0.15)] border border-slate-100 space-y-2 relative overflow-hidden">
+                                    <div className="flex justify-between text-[13px] font-bold text-[#476082]">
+                                        <span>Package Price:</span>
+                                        <span className="text-[#0B213F]">AED {currentPrice.toFixed(2)}</span>
                                     </div>
+                                    <div className="flex justify-between text-[13px] font-bold text-[#476082]">
+                                        <span>Discount:</span>
+                                        <span className="text-red-500">- AED {formData.discount}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[13px] font-bold text-[#476082]">
+                                        <span>VAT (5%):</span>
+                                        <span className="text-emerald-600">+ AED {vatAmount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="h-px bg-slate-200 w-full my-3" />
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-black text-[#0B213F]">Total Amount:</span>
+                                        <span className="font-black text-[#1C5CAA] text-lg uppercase">AED {totalPrice.toFixed(2)}</span>
+                                    </div>
+                                    {formData.paymentStatus === 'PARTIAL' && (
+                                        <>
+                                            <div className="flex justify-between text-[13px] font-bold text-green-700">
+                                                <span>Amount Paid:</span>
+                                                <span>AED {formData.paidAmount.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[13px] font-bold text-orange-600">
+                                                <span>Remaining:</span>
+                                                <span>AED {remainingAmount.toFixed(2)}</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>

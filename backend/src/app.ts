@@ -22,6 +22,10 @@ import freezingsRoutes from './modules/freezings/freezings.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import studentAppRoutes from './modules/student-app/student-app.routes';
+import reviewsRoutes from './modules/reviews/reviews.routes';
+import expensesRoutes from './modules/expenses/expenses.routes';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 
 const app: Express = express();
 
@@ -56,11 +60,12 @@ app.use(`${env.API_PREFIX}/reminders`, remindersRoutes);
 app.use(`${env.API_PREFIX}/cancellations`, cancellationsRoutes);
 app.use(`${env.API_PREFIX}/freezings`, freezingsRoutes);
 app.use(`${env.API_PREFIX}/reports`, reportsRoutes);
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger';
+
 
 app.use(`${env.API_PREFIX}/settings`, settingsRoutes);
 app.use(`${env.API_PREFIX}/student-app`, studentAppRoutes);
+app.use(`${env.API_PREFIX}/reviews`, reviewsRoutes);
+app.use(`${env.API_PREFIX}/expenses`, expensesRoutes);
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

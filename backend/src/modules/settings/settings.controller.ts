@@ -21,3 +21,13 @@ export const saveSettings = async (req: Request, res: Response, next: NextFuncti
         next(error);
     }
 };
+
+export const deleteSetting = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const key = req.params.key as string;
+        await settingsService.deleteSetting(key);
+        return successResponse({ res, message: 'Setting deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};

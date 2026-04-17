@@ -15,7 +15,10 @@ import {
     UserMinus,
     History as HistoryIcon,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    AlarmClock,
+    Star,
+    CircleDollarSign
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -32,7 +35,9 @@ const navItems = [
     { title: "Payments", href: "/payments", icon: CreditCard },
     { title: "Notifications", href: "/notifications", icon: BellRing },
     { title: "Reports", href: "/reports", icon: BarChart3 },
-    { title: "Reminders", href: "/reminders", icon: BellRing },
+    { title: "Reviews", href: "/reviews", icon: Star },
+    { title: "Expenses", href: "/expenses", icon: CircleDollarSign },
+    { title: "Reminders", href: "/reminders", icon: AlarmClock },
     { title: "Settings", href: "/settings", icon: Settings },
 ];
 

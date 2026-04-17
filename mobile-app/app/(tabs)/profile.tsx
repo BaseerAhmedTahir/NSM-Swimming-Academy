@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as storage from '../../lib/storage';
 import api from '../../lib/api';
 
+// Shorten long branch names to just the city for compact display
+const shortenBranchName = (name: string): string => {
+    if (!name) return name;
+    const lower = name.toLowerCase();
+    if (lower.includes('dubai'))     return 'Dubai';
+    if (lower.includes('sharjah'))   return 'Sharjah';
+    if (lower.includes('abu dhabi')) return 'Abu Dhabi';
+    return name; // fallback: return as-is
+};
+
 export default function ProfileScreen() {
     const router = useRouter();
     const [branchName, setBranchName] = useState('My Branch');
@@ -18,11 +28,17 @@ export default function ProfileScreen() {
     const [attendance, setAttendance] = useState({ attended: 0, absent: 0, totalClasses: 24 });
     const [loading, setLoading] = useState(true);
 
+    // Review state
+    const [reviewRating, setReviewRating] = useState(0);
+    const [reviewText, setReviewText] = useState('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
     useEffect(() => {
         const fetchProfile = async () => {
             try {
                 const storedBranch = await AsyncStorage.getItem('selectedBranchName');
-                if (storedBranch) setBranchName(storedBranch);
+                if (storedBranch) setBranchName(shortenBranchName(storedBranch));
 
                 const [profRes, attRes] = await Promise.all([
                     api.get('/student-app/profile').catch(() => ({ data: { success: false } })),
@@ -32,12 +48,17 @@ export default function ProfileScreen() {
                 if (profRes.data.success) {
                     const profileData = profRes.data.data;
                     setStudent(profileData);
-                    if (!storedBranch && profileData.branch) setBranchName(profileData.branch.name);
+                    if (!storedBranch && profileData.branch) setBranchName(shortenBranchName(profileData.branch.name));
                     // Use real totalClasses from server (from active MembershipHistory)
                     setAttendance(prev => ({
                         ...prev,
                         totalClasses: profileData.totalClasses || 0,
                     }));
+                    if (profileData.review) {
+                        setReviewRating(profileData.review.rating);
+                        setReviewText(profileData.review.text || '');
+                        setReviewSubmitted(true);
+                    }
                 }
 
                 if (attRes.data.success) {
@@ -76,6 +97,74 @@ export default function ProfileScreen() {
         } catch (error) {
             console.error(error);
             router.replace('/login');
+        }
+    };
+
+    const handleSubmitReview = async () => {
+        if (reviewRating === 0) {
+            Alert.alert('Rating Required', 'Please select a star rating before submitting.');
+            return;
+        }
+        setIsSubmittingReview(true);
+        try {
+            await api.post('/student-app/review', { rating: reviewRating, text: reviewText.trim() || undefined });
+            setStudent((prev: any) => ({ ...prev, review: { rating: reviewRating, text: reviewText.trim() || undefined } }));
+            setReviewSubmitted(true);
+            Alert.alert(
+                '🌟 Thank You!',
+                'Your review has been submitted. Would you like to also leave a review on Google Maps?',
+                [
+                    { text: 'Not now', style: 'cancel' },
+                    { text: 'Open Google Maps', onPress: () => Linking.openURL('https://g.page/r/REPLACE_WITH_YOUR_GOOGLE_MAPS_LINK/review') }
+                ]
+            );
+        } catch (err) {
+            Alert.alert('Error', 'Failed to submit review. Please try again.');
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
+
+    const handleDeleteReview = async () => {
+        const doDelete = async () => {
+            try {
+                await api.delete('/student-app/review');
+                setReviewRating(0);
+                setReviewText('');
+                setReviewSubmitted(false);
+                setStudent((prev: any) => ({ ...prev, review: null }));
+                if (Platform.OS === 'web') {
+                    window.alert('Your review has been deleted.');
+                } else {
+                    Alert.alert('Deleted', 'Your review has been deleted.');
+                }
+            } catch (err: any) {
+                const errMsg = err?.response?.data?.message || err?.response?.data?.error?.details || err.message || 'Unknown error';
+                if (Platform.OS === 'web') {
+                    window.alert(`Failed to delete review: ${errMsg}`);
+                } else {
+                    Alert.alert('Error', `Failed to delete review: ${errMsg}`);
+                }
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to delete your review?')) {
+                doDelete();
+            }
+        } else {
+            Alert.alert(
+                'Delete Review',
+                'Are you sure you want to delete your review?',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                        text: 'Delete', 
+                        style: 'destructive',
+                        onPress: doDelete
+                    }
+                ]
+            );
         }
     };
 
@@ -180,15 +269,98 @@ export default function ProfileScreen() {
                         </GlassCard>
                     </View>
 
+                    {/* Section: Rate Your Experience */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeaderLine}>
+                            <Ionicons name="star-outline" size={22} color={theme.colors.primary} style={styles.sectionIcon} />
+                            <Text style={styles.sectionTitle}>Rate Your Experience</Text>
+                        </View>
+                        <GlassCard style={styles.cardLayout}>
+                            {reviewSubmitted ? (
+                                <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                                    <Ionicons name="checkmark-circle" size={40} color="#0bf6f6" />
+                                    <Text style={{ color: '#ffffff', fontFamily: 'Poppins_600SemiBold', fontSize: 15, marginTop: 8, textAlign: 'center' }}>
+                                        Review submitted! Thank you 🌟
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', marginTop: 15, justifyContent: 'center' }}>
+                                        <TouchableOpacity onPress={() => setReviewSubmitted(false)} style={{ marginHorizontal: 15 }}>
+                                            <Text style={{ color: '#0bf6f6', fontFamily: 'Poppins_600SemiBold', fontSize: 14 }}>Edit Review</Text>
+                                        </TouchableOpacity>
+                                        {/* <TouchableOpacity onPress={handleDeleteReview} style={{ marginHorizontal: 15 }}>
+                                            <Text style={{ color: theme.colors.error, fontFamily: 'Poppins_600SemiBold', fontSize: 14 }}>Delete</Text>
+                                        </TouchableOpacity> */}
+                                    </View>
+                                </View>
+                            ) : (
+                                <>
+                                    <Text style={{ color: '#a0aab2', fontFamily: 'Poppins_400Regular', fontSize: 13, marginBottom: 12 }}>
+                                        How would you rate your experience at NSM Swimming Academy?
+                                    </Text>
+                                    {/* Star Rating */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <TouchableOpacity key={star} onPress={() => setReviewRating(star)} style={{ paddingHorizontal: 6 }}>
+                                                <Ionicons
+                                                    name={star <= reviewRating ? "star" : "star-outline"}
+                                                    size={36}
+                                                    color={star <= reviewRating ? '#f59e0b' : 'rgba(255,255,255,0.3)'}
+                                                />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                    {/* Text review */}
+                                    <TextInput
+                                        style={styles.reviewTextInput}
+                                        placeholder="Share your experience (optional)..."
+                                        placeholderTextColor="rgba(255,255,255,0.3)"
+                                        multiline
+                                        numberOfLines={3}
+                                        value={reviewText}
+                                        onChangeText={setReviewText}
+                                        maxLength={500}
+                                    />
+                                    {student?.review ? (
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <TouchableOpacity
+                                                style={[styles.reviewSubmitBtn, { flex: 1, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#0bf6f6', marginRight: 10 }]}
+                                                onPress={() => {
+                                                    setReviewRating(student.review.rating);
+                                                    setReviewText(student.review.text || '');
+                                                    setReviewSubmitted(true);
+                                                }}
+                                                disabled={isSubmittingReview}
+                                            >
+                                                <Text style={[styles.reviewSubmitBtnText, { color: '#0bf6f6' }]}>Cancel</Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                style={[styles.reviewSubmitBtn, { flex: 1, marginLeft: 10 }, reviewRating === 0 && { opacity: 0.5 }]}
+                                                onPress={handleSubmitReview}
+                                                disabled={isSubmittingReview || reviewRating === 0}
+                                            >
+                                                <Text style={styles.reviewSubmitBtnText}>
+                                                    {isSubmittingReview ? 'Saving...' : 'Save Review'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={[styles.reviewSubmitBtn, reviewRating === 0 && { opacity: 0.5 }]}
+                                            onPress={handleSubmitReview}
+                                            disabled={isSubmittingReview || reviewRating === 0}
+                                        >
+                                            <Text style={styles.reviewSubmitBtnText}>
+                                                {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </>
+                            )}
+                        </GlassCard>
+                    </View>
+
                     {/* Section: Settings/Actions */}
                     <View style={styles.section}>
-                        {/* <TouchableOpacity style={styles.actionItem}>
-                            <GlassCard style={styles.actionCard}>
-                                <Ionicons name="settings-outline" size={22} color={theme.colors.textPrimary} />
-                                <Text style={styles.actionText}>App Settings</Text>
-                                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
-                            </GlassCard>
-                        </TouchableOpacity> */}
                         <TouchableOpacity
                             style={styles.actionItem}
                             onPress={handleLogout}
@@ -361,6 +533,30 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins_400Regular',
         fontSize: 12,
         color: '#a0aab2',
+    },
+    reviewTextInput: {
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(11,246,246,0.3)',
+        color: '#ffffff',
+        padding: 12,
+        fontFamily: 'Poppins_400Regular',
+        fontSize: 13,
+        marginBottom: 14,
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
+    reviewSubmitBtn: {
+        backgroundColor: '#0bf6f6',
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    reviewSubmitBtnText: {
+        color: '#001c3d',
+        fontFamily: 'Poppins_700Bold',
+        fontSize: 15,
     },
     actionItem: {
         marginBottom: 12,

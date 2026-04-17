@@ -46,6 +46,7 @@ export default function ExpiredPackagesPage() {
                     studentName: h.student?.name || "Unknown",
                     phone: h.student?.phone || "N/A",
                     branch: h.student?.branch?.name || "Unknown",
+                    branchId: h.student?.branchId,
                     packageName: h.packageType ? (h.packageType.charAt(0) + h.packageType.slice(1).toLowerCase() + ' Package') : 'Standard Package',
                     classesUsed: h.classesUsed || 0,
                     totalClasses: h.totalClasses || 0,
@@ -58,25 +59,57 @@ export default function ExpiredPackagesPage() {
             .finally(() => setIsLoading(false));
     };
 
+    const [allSettings, setAllSettings] = useState<any[]>([]);
     const [dynamicPackages, setDynamicPackages] = useState<any[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
 
     const fetchSettings = async () => {
         try {
-            const res = await api.get('/settings');
-            if (res.data.success) {
-                const pkgs = res.data.data.filter((s:any) => s.key.startsWith('PACKAGE_')).map((s:any) => {
-                    const parsed = JSON.parse(s.value);
-                    return {
-                        id: s.key.replace('PACKAGE_', ''),
-                        name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
-                        classes: parsed.classes,
-                        price: parsed.price
-                    };
-                });
-                if(pkgs.length > 0) setDynamicPackages(pkgs);
+            const [setRes, brRes] = await Promise.all([
+                api.get('/settings'),
+                api.get('/branches')
+            ]);
+            if (setRes.data.success) {
+                setAllSettings(setRes.data.data);
             }
-        } catch(e) {}
+            if (brRes.data.success) {
+                setBranches(brRes.data.data.results || brRes.data.data);
+            }
+        } catch(e) { console.error(e); }
     };
+
+    useEffect(() => {
+        if (!allSettings || allSettings.length === 0 || !selectedStudent || !selectedStudent.branchId) return;
+        const branchId = selectedStudent.branchId;
+        const branchPrefix = `_${branchId}`;
+
+        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+        let packagesToUse = branchPackages;
+
+        if (branchPackages.length === 0) {
+            packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b:any) => s.key.endsWith('_' + b.id)));
+        }
+
+        const pkgs = packagesToUse.map((s:any) => {
+            const parsed = JSON.parse(s.value);
+            let baseKey = s.key.replace(branchPrefix, '');
+            return {
+                id: baseKey.replace('PACKAGE_', ''),
+                name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
+                classes: parsed.classes,
+                price: parsed.price,
+                durationMonths: parsed.durationMonths || 1
+            };
+        });
+
+        setDynamicPackages(pkgs);
+        if (pkgs.length > 0) {
+            setRenewData(prev => {
+                const isValid = pkgs.some((p: any) => p.id === prev.packageType);
+                return isValid ? prev : { ...prev, packageType: pkgs[0].id };
+            });
+        }
+    }, [selectedStudent, allSettings, branches]);
 
     useEffect(() => {
         fetchSettings();

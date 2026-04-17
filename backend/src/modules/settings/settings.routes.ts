@@ -14,5 +14,6 @@ router.get('/', settingsController.getSettings);
 
 // Only Super Admin can modify settings
 router.post('/bulk', authorize(['SUPER_ADMIN']), validate(saveSettingsSchema), settingsController.saveSettings);
+router.delete('/:key', authorize(['SUPER_ADMIN']), settingsController.deleteSetting);
 
 export default router;

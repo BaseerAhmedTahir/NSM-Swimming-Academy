@@ -4,6 +4,7 @@ import { authenticate } from '../../middleware/auth';
 import { authorize } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
 import { cancelClassSchema } from './student-app.schema';
+import { createReviewSchema } from '../reviews/reviews.schema';
 
 const router = Router();
 
@@ -18,5 +19,8 @@ router.get('/payments', studentAppController.getPayments);
 router.get('/notifications', studentAppController.getNotifications);
 router.post('/notifications/:id/read', studentAppController.markNotificationRead);
 router.post('/cancel-class', validate(cancelClassSchema), studentAppController.cancelClass);
+router.post('/review', validate(createReviewSchema), studentAppController.submitReview);
+router.delete('/review', studentAppController.deleteReview);
 
 export default router;
+

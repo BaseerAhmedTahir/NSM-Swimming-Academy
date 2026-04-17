@@ -64,7 +64,9 @@ export default function PaymentsPage() {
         discount: 0,
         packageType: "SILVER",
         paymentMode: "CARD",
-        registrationType: "NEW"
+        registrationType: "NEW",
+        existingPaymentId: null as string | null,
+        priorPaidAmount: 0
     });
 
     // Handlers
@@ -76,7 +78,9 @@ export default function PaymentsPage() {
             discount: 0,
             packageType: "SILVER",
             paymentMode: "CARD",
-            registrationType: "NEW"
+            registrationType: "NEW",
+            existingPaymentId: null,
+            priorPaidAmount: 0
         });
         setIsAddModalOpen(true);
     };
@@ -91,8 +95,18 @@ export default function PaymentsPage() {
         setIsSubmitting(true);
         try {
             const finalAmount = formData.amount - formData.discount;
-            const status = formData.paidAmount >= finalAmount ? 'PAID' : (formData.paidAmount > 0 ? 'PARTIAL' : 'PENDING');
-            await api.post('/payments', { ...formData, status });
+            const totalPaid = (formData.priorPaidAmount || 0) + formData.paidAmount;
+            const status = totalPaid >= finalAmount ? 'PAID' : (totalPaid > 0 ? 'PARTIAL' : 'PENDING');
+            
+            if (formData.existingPaymentId) {
+                await api.put(`/payments/${formData.existingPaymentId}`, { 
+                    ...formData, 
+                    paidAmount: totalPaid,
+                    status 
+                });
+            } else {
+                await api.post('/payments', { ...formData, paidAmount: totalPaid, status });
+            }
             toast.success("Payment recorded successfully");
             setIsAddModalOpen(false);
             fetchPayments();
@@ -117,23 +131,45 @@ export default function PaymentsPage() {
         } catch (err) { console.error(err); }
     };
 
+    const [allSettings, setAllSettings] = useState<any[]>([]);
+
     const fetchSettings = async () => {
         try {
             const res = await api.get('/settings');
             if (res.data.success) {
-                const pkgs = res.data.data.filter((s:any) => s.key.startsWith('PACKAGE_')).map((s:any) => {
-                    const parsed = JSON.parse(s.value);
-                    return {
-                        id: s.key.replace('PACKAGE_', ''),
-                        name: s.key.replace('PACKAGE_', '').charAt(0) + s.key.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
-                        classes: parsed.classes,
-                        price: parsed.price
-                    };
-                });
-                if(pkgs.length > 0) setDynamicPackages(pkgs);
+                setAllSettings(res.data.data);
             }
         } catch(e) {}
     };
+
+    useEffect(() => {
+        if (!allSettings || allSettings.length === 0 || !formData.studentId) return;
+        const student = allStudents.find((s: any) => s.id === formData.studentId);
+        if (!student || (!student.branchId && !student.branch?.id)) return;
+        const branchId = student.branchId || student.branch?.id;
+        
+        const branchPrefix = `_${branchId}`;
+        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+        let packagesToUse = branchPackages;
+
+        if (branchPackages.length === 0) {
+            packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b:any) => s.key.endsWith('_' + b.id)));
+        }
+
+        const pkgs = packagesToUse.map((s:any) => {
+            const parsed = JSON.parse(s.value);
+            let baseKey = s.key.replace(branchPrefix, '');
+            return {
+                id: baseKey.replace('PACKAGE_', ''),
+                name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
+                classes: parsed.classes,
+                price: parsed.price,
+                durationMonths: parsed.durationMonths || 1
+            };
+        });
+
+        setDynamicPackages(pkgs);
+    }, [formData.studentId, allSettings, allStudents, branches]);
 
     const fetchPayments = async () => {
         setIsLoading(true);
@@ -152,8 +188,9 @@ export default function PaymentsPage() {
                     package: pay.packageType || "Standard",
                     date: new Date(pay.paymentDate || pay.createdAt).toLocaleDateString(),
                     mode: pay.paymentMode || "Card",
-                    status: pay.status === 'PAID' ? 'Paid' : 'Pending',
-                    amount: pay.totalAmount || 0,
+                    status: pay.status === 'PAID' ? 'Paid' : (pay.status === 'PARTIAL' ? 'Partial' : 'Pending'),
+                    amount: pay.status === 'PAID' ? pay.totalAmount : pay.pendingAmount,
+                    paidAmount: pay.paidAmount || 0,
                     realId: pay.id
                 }));
                 setPayments(mapped);
@@ -208,10 +245,9 @@ export default function PaymentsPage() {
 
     // Stats
     const totalRevenue = activePayments
-        .filter((p: any) => p.status === 'Paid')
-        .reduce((sum: number, p: any) => sum + (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount), 0);
+        .reduce((sum: number, p: any) => sum + (p.paidAmount || (p.status === 'Paid' ? (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount) : 0)), 0);
 
-    const pendingPaymentsList = activePayments.filter((p: any) => p.status === 'Pending');
+    const pendingPaymentsList = activePayments.filter((p: any) => p.status === 'Pending' || p.status === 'Partial');
     const pendingAmount = pendingPaymentsList.reduce((sum: number, p: any) => sum + (typeof p.amount === 'string' ? parseInt(p.amount.replace(/,/g, '')) : p.amount), 0);
 
     // Dynamic Payment Mode Distribution
@@ -343,6 +379,7 @@ export default function PaymentsPage() {
                         <SelectContent>
                             <SelectItem value="all-status">All Status</SelectItem>
                             <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="partial">Partial</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
                         </SelectContent>
                     </Select>
@@ -398,14 +435,18 @@ export default function PaymentsPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <div className={cn("w-2 h-2 rounded-full border", payment.status === 'Paid' ? "bg-success border-success/50" : "bg-warning border-warning/50")} />
-                                            <span className={cn("font-bold text-sm", payment.status === 'Paid' ? "text-success" : "text-warning")}>
+                                            <div className={cn("w-2 h-2 rounded-full border", payment.status === 'Paid' ? "bg-success border-success/50" : (payment.status === 'Partial' ? "bg-blue-500 border-blue-500/50" : "bg-warning border-warning/50"))} />
+                                            <span className={cn("font-bold text-sm", payment.status === 'Paid' ? "text-success" : (payment.status === 'Partial' ? "text-blue-500" : "text-warning"))}>
                                                 {payment.status}
                                             </span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right font-black text-foreground">
-                                        {payment.amount}
+                                        {payment.status === 'Partial' || payment.status === 'Pending' ? (
+                                            <span className="text-warning">AED {payment.amount} <span className="text-[10px] uppercase text-muted-foreground block leading-none">Left</span></span>
+                                        ) : (
+                                            `AED ${payment.amount}`
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-muted/50 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleOpenInvoice(payment); }}>
@@ -428,7 +469,7 @@ export default function PaymentsPage() {
 
             {/* --- RECORD PAYMENT FORM (4.8.2) --- */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-0 border-border/50">
+                <DialogContent className="max-w-3xl max-h-[95vh] rounded-3xl p-0 border-border/50 flex flex-col">
                     <form onSubmit={handleSavePayment}>
                         <div className="bg-muted/30 px-6 py-4 border-b border-border/50 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center">
@@ -442,7 +483,7 @@ export default function PaymentsPage() {
                             </div>
                         </div>
 
-                        <div className="p-6 grid gap-6">
+                        <div className="p-5 grid gap-5 overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Select Student <span className="text-error">*</span></Label>
@@ -456,16 +497,30 @@ export default function PaymentsPage() {
                                                 setFormData(prev => ({
                                                     ...prev, 
                                                     studentId: v, 
-                                                    amount: latestPayment.totalAmount || 1500,
-                                                    paidAmount: latestPayment.totalAmount || 1500,
-                                                    packageType: activePackage
+                                                    existingPaymentId: latestPayment.id,
+                                                    priorPaidAmount: latestPayment.paidAmount || 0,
+                                                    amount: latestPayment.totalAmount + (latestPayment.discount || 0),
+                                                    paidAmount: 0,
+                                                    discount: latestPayment.discount || 0,
+                                                    packageType: latestPayment.packageType || activePackage
                                                 }));
                                             } else {
-                                                setFormData(prev => ({...prev, studentId: v, packageType: activePackage}));
+                                                // Find package details from state to autofill price
+                                                const pkgDetails = dynamicPackages.find(p => p.id === activePackage);
+                                                setFormData(prev => ({
+                                                    ...prev, 
+                                                    studentId: v, 
+                                                    existingPaymentId: null,
+                                                    priorPaidAmount: 0,
+                                                    packageType: activePackage,
+                                                    amount: pkgDetails ? pkgDetails.price : 1500,
+                                                    paidAmount: 0,
+                                                    discount: 0
+                                                }));
                                             }
                                         }
                                     }} required>
-                                        <SelectTrigger><SelectValue placeholder="Search student name or ID..." /></SelectTrigger>
+                                        <SelectTrigger className="w-full h-10 overflow-hidden"><SelectValue placeholder="Search student name or ID..." /></SelectTrigger>
                                         <SelectContent className="max-h-[300px]">
                                             {allStudents.filter((s: any) => selectedBranch === "all-branches" || s.branchId === selectedBranch || s.branch?.id === selectedBranch).map((s: any) => {
                                                 const hasPending = s.payments?.[0] && s.payments[0].status !== 'PAID';
@@ -486,7 +541,7 @@ export default function PaymentsPage() {
                                 <div className="space-y-2">
                                     <Label>Package / Item</Label>
                                     <Select value={formData.packageType} onValueChange={(v) => setFormData({...formData, packageType: v})}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="w-full h-10"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {dynamicPackages.length > 0 ? dynamicPackages.map(pkg => (
                                                 <SelectItem key={pkg.id} value={pkg.id}>
@@ -507,10 +562,10 @@ export default function PaymentsPage() {
                                     <div className="flex items-center space-x-2 border rounded-xl p-2 w-full h-10 bg-muted/10">
                                         <Switch 
                                             id="pay-renewal" 
-                                            checked={formData.registrationType === 'RENEWAL'} 
-                                            onCheckedChange={(c) => setFormData({...formData, registrationType: c ? 'RENEWAL' : 'NEW'})}
+                                            checked={formData.registrationType === 'RENEW'} 
+                                            onCheckedChange={(c) => setFormData({...formData, registrationType: c ? 'RENEW' : 'NEW'})}
                                         />
-                                        <Label htmlFor="pay-renewal" className="cursor-pointer font-bold">Registration Fee Applicable</Label>
+                                        <Label htmlFor="pay-renewal" className="cursor-pointer font-bold text-sm leading-tight">Registration Fee Applicable</Label>
                                     </div>
                                 </div>
                             </div>
@@ -520,7 +575,7 @@ export default function PaymentsPage() {
                                     <div className="space-y-2">
                                         <Label>Payment Method</Label>
                                         <Select value={formData.paymentMode} onValueChange={(v) => setFormData({...formData, paymentMode: v})}>
-                                            <SelectTrigger className="bg-card"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="bg-card w-full h-10"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="CASH">Cash</SelectItem>
                                                 <SelectItem value="CARD">Credit Card / POS</SelectItem>
@@ -533,17 +588,18 @@ export default function PaymentsPage() {
                                         <Input 
                                             type="number" 
                                             value={formData.amount} 
-                                            onChange={(e) => setFormData({...formData, amount: Number(e.target.value)})} 
-                                            className="bg-card" 
+                                            readOnly
+                                            className="bg-muted/50 cursor-not-allowed font-medium" 
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Paid Amount (AED)</Label>
+                                        <Label>Paid Amount Today (AED)</Label>
                                         <Input 
                                             type="number" 
                                             value={formData.paidAmount} 
                                             onChange={(e) => setFormData({...formData, paidAmount: Number(e.target.value)})} 
-                                            className="bg-card" 
+                                            className="bg-card font-bold text-primary" 
+                                            autoFocus
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -566,23 +622,35 @@ export default function PaymentsPage() {
                                         <span className="text-muted-foreground">Discount:</span>
                                         <span className="text-error">- AED {formData.discount}</span>
                                     </div>
+                                    {formData.existingPaymentId && formData.priorPaidAmount > 0 && (
+                                        <div className="flex justify-between text-sm font-medium">
+                                            <span className="text-muted-foreground">Previously Paid:</span>
+                                            <span className="text-success">- AED {formData.priorPaidAmount}</span>
+                                        </div>
+                                    )}
                                     <div className="h-px w-full bg-border/50 my-2" />
                                     <div className="flex justify-between items-center pt-2">
-                                        <span className="font-black text-foreground text-lg cursor-pointer">Total Due:</span>
-                                        <span className="font-black text-primary text-xl tracking-tight">AED {formData.amount - formData.discount}</span>
+                                        <span className="font-black text-foreground text-lg cursor-pointer">
+                                            {formData.existingPaymentId ? "Remaining Balance:" : "Total Due:"}
+                                        </span>
+                                        <span className="font-black text-primary text-xl tracking-tight">
+                                            AED {formData.amount - formData.discount - (formData.priorPaidAmount || 0)}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center pt-2">
-                                        <span className="font-bold text-muted-foreground text-sm">Remaining:</span>
-                                        <span className="font-bold text-error text-sm tracking-tight">AED {(formData.amount - formData.discount) - formData.paidAmount}</span>
+                                        <span className="font-bold text-muted-foreground text-sm">After Today's Payment:</span>
+                                        <span className="font-bold text-error text-sm tracking-tight">
+                                            AED {Math.max(0, (formData.amount - formData.discount - (formData.priorPaidAmount || 0)) - formData.paidAmount)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-muted/10 p-6 border-t border-border/50 flex justify-end gap-3 rounded-b-3xl">
+                        <div className="bg-muted/10 p-4 border-t border-border/50 flex justify-end gap-3 rounded-b-3xl shrink-0">
                             <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                            <Button type="submit" className="font-bold shadow-sm">
-                                Submit Payment Info
+                            <Button type="submit" className="font-bold shadow-sm" disabled={!formData.studentId || isSubmitting}>
+                                {!formData.studentId ? "Select a student first" : "Submit Payment Info"}
                             </Button>
                         </div>
                     </form>

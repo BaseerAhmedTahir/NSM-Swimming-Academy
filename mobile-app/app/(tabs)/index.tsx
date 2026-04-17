@@ -177,6 +177,35 @@ export default function HomeScreen() {
             )}
           </GlassCard>
 
+          {/* Payment Status Alert */}
+          {student.payments && student.payments[0] && (student.payments[0].status === 'PARTIAL' || student.payments[0].status === 'PENDING') ? (
+            <GlassCard style={[styles.classCard, { borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', marginBottom: theme.spacing.xxl }]}>
+              <View style={[styles.classDateBox, { backgroundColor: 'rgba(245,158,11,0.15)', borderColor: 'rgba(245,158,11,0.3)' }]}>
+                <Ionicons name="warning" size={24} color="#f59e0b" />
+              </View>
+              <View style={styles.classInfo}>
+                <Text style={[styles.classTitle, { color: '#f59e0b' }]}>Payment Pending</Text>
+                <Text style={[styles.classDetText, { color: '#fbbf24', marginTop: 2 }]}>
+                  {student.payments[0].status === 'PARTIAL'
+                    ? `Remaining: AED ${student.payments[0].pendingAmount?.toFixed(2) || '0.00'}`
+                    : 'Fee payment is outstanding'}
+                </Text>
+                <Text style={[styles.classDetText, { color: 'rgba(255,255,255,0.5)', fontSize: 11 }]}>Contact academy to complete payment</Text>
+              </View>
+            </GlassCard>
+          ) : student.payments && student.payments[0]?.status === 'PAID' ? (
+            <GlassCard style={[styles.classCard, { borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.06)', marginBottom: theme.spacing.xxl }]}>
+              <View style={[styles.classDateBox, { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' }]}>
+                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+              </View>
+              <View style={styles.classInfo}>
+                <Text style={[styles.classTitle, { color: '#10b981' }]}>Fee Paid ✓</Text>
+                <Text style={[styles.classDetText, { color: 'rgba(255,255,255,0.6)' }]}>AED {student.payments[0].totalAmount?.toFixed(2)}</Text>
+              </View>
+            </GlassCard>
+          ) : null}
+
+
           {/* Recent Notifications */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Updates</Text>

@@ -229,15 +229,21 @@ export default function NotificationsPage() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                                             {user?.role === 'SUPER_ADMIN' && (
-                                                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                                                    <SelectTrigger><SelectValue placeholder="Filter by Branch" /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="all">All Branches</SelectItem>
-                                                        {branches.map(b => (
-                                                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs font-bold text-muted-foreground uppercase">📍 Target Branch (Recipients)</Label>
+                                                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                                                        <SelectTrigger><SelectValue placeholder="All Branches" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">All Branches (Entire Academy)</SelectItem>
+                                                            {branches.map(b => (
+                                                                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {selectedBranch !== 'all' && (
+                                                        <p className="text-[11px] text-blue-600 font-semibold mt-1">✓ Sending to: <strong>{branches.find(b => b.id === selectedBranch)?.name}</strong> students only</p>
+                                                    )}
+                                                </div>
                                             )}
                                             <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                                                 <SelectTrigger><SelectValue placeholder="Filter by Level" /></SelectTrigger>

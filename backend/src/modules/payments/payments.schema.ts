@@ -9,7 +9,7 @@ export const createPaymentSchema = z.object({
     paidAmount: z.number().min(0),
     paymentMode: z.enum(['CASH', 'CARD', 'ONLINE']),
     status: z.enum(['PAID', 'PENDING', 'PARTIAL', 'OVERDUE', 'REFUNDED']),
-    packageType: z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']),
+    packageType: z.string(),
     registrationType: z.enum(['NEW', 'RENEW']),
     isInstallment: z.boolean().default(false),
     notes: z.string().optional()

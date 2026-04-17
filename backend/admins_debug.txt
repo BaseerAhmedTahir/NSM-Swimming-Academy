@@ -1,0 +1,15 @@
+Found 2 admins.
+--- ADMIN ---
+ID: 268593a9-9b59-4cf0-96e6-f084390e4799
+Username: admin0
+Email: admin0@nsm.com
+Role: SUPER_ADMIN
+Branch Name: Dubai Marina
+Branch ID: faf2b82b-51fe-45c9-8221-f10f605f9438
+--- ADMIN ---
+ID: ae030bcb-fe18-419e-8f35-eba26affc312
+Username: superadmin@nsm.com
+Email: superadmin@nsm.com
+Role: SUPER_ADMIN
+Branch Name: N/A
+Branch ID: N/A

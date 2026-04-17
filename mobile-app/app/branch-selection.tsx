@@ -1,38 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import AppBackground from '../components/ui/AppBackground';
 import GlassCard from '../components/ui/GlassCard';
 import PrimaryButton from '../components/ui/PrimaryButton';
-import api from '../lib/api';
+
+// Static branch list — no network required
+const BRANCHES = [
+    { id: 'dubai',    name: 'Dubai',     icon: 'location' },
+    { id: 'sharjah',  name: 'Sharjah',   icon: 'location' },
+    { id: 'abudhabi', name: 'Abu Dhabi', icon: 'location' },
+];
 
 export default function BranchSelectionScreen() {
     const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-    const [branches, setBranches] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
     const router = useRouter();
-
-    const fetchBranches = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(false);
-            const res = await api.get('/branches');
-            const data = res.data.data?.results || res.data.data || [];
-            setBranches(data);
-        } catch (e) {
-            console.error('Failed to load branches', e);
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchBranches();
-    }, [fetchBranches]);
 
     // Branch selection here is purely informational — the actual branch assigned to
     // the student is determined by the admin at registration time and returned during login.
@@ -51,25 +35,7 @@ export default function BranchSelectionScreen() {
                     </View>
 
                     <View style={styles.branchesContainer}>
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#0bf6f6" style={{ marginTop: 40 }} />
-                        ) : error ? (
-                            <View style={styles.errorContainer}>
-                                <Ionicons name="wifi-outline" size={48} color="rgba(255,82,82,0.7)" />
-                                <Text style={styles.errorTitle}>Could Not Load Branches</Text>
-                                <Text style={styles.errorSubtitle}>Check your connection and try again.</Text>
-                                <TouchableOpacity style={styles.retryBtn} onPress={fetchBranches}>
-                                    <Ionicons name="refresh" size={18} color="#0bf6f6" />
-                                    <Text style={styles.retryText}>Retry</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : branches.length === 0 ? (
-                            <View style={styles.errorContainer}>
-                                <Ionicons name="location-outline" size={48} color="rgba(255,255,255,0.2)" />
-                                <Text style={styles.errorTitle}>No Branches Found</Text>
-                                <Text style={styles.errorSubtitle}>Please contact your administrator.</Text>
-                            </View>
-                        ) : branches.map(branch => {
+                        {BRANCHES.map(branch => {
                             const isSelected = selectedBranch === branch.id;
                             return (
                                 <TouchableOpacity

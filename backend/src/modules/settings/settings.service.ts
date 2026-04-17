@@ -18,3 +18,12 @@ export const saveSettingsBulk = async (settingsArray: { key: string, value: stri
     }
     return results;
 };
+
+export const deleteSetting = async (key: string) => {
+    try {
+        await prisma.setting.delete({ where: { key } });
+    } catch (e) {
+        // ignore if not found
+    }
+    return true;
+};
