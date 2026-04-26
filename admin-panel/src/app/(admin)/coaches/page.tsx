@@ -50,6 +50,7 @@ export default function CoachesPage() {
         name: "",
         phone: "",
         email: "",
+        gender: "MALE",
         branchId: ""
     });
 
@@ -78,6 +79,7 @@ export default function CoachesPage() {
                     email: c.email || "N/A",
                     branch: c.branch?.name || "Unknown Branch",
                     branchId: c.branchId,
+                    gender: c.gender || "MALE",
                     assignedStudents: c.studentAssignments || Array.from({ length: c._count?.studentAssignments || 0 }),
                 }));
                 setCoaches(mapped);
@@ -120,7 +122,7 @@ export default function CoachesPage() {
         const defaultBranchId = user?.role === 'STAFF' && user?.branchId
             ? user.branchId
             : branches[0]?.id || '';
-        setFormData({ name: "", phone: "", email: "", branchId: defaultBranchId });
+        setFormData({ name: "", phone: "", email: "", gender: "MALE", branchId: defaultBranchId });
         setIsAddModalOpen(true);
     };
 
@@ -131,6 +133,7 @@ export default function CoachesPage() {
             name: coach.name,
             phone: coach.phone === "N/A" ? "" : coach.phone,
             email: coach.email,
+            gender: coach.gender,
             branchId: coach.branchId
         });
         setIsAddModalOpen(true);
@@ -281,7 +284,15 @@ export default function CoachesPage() {
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-bold text-foreground">{coach.name}</p>
+                                                <p className="font-bold text-foreground flex items-center gap-2">
+                                                    {coach.name}
+                                                    <span className={cn(
+                                                        "text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase",
+                                                        coach.gender === 'FEMALE' ? "bg-pink-100 text-pink-600" : "bg-blue-100 text-blue-600"
+                                                    )}>
+                                                        {coach.gender}
+                                                    </span>
+                                                </p>
                                                 <p className="text-xs text-muted-foreground font-medium">Senior Instructor</p>
                                             </div>
                                         </div>
@@ -400,28 +411,43 @@ export default function CoachesPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Assigned Branch</Label>
-                                {user?.role === 'STAFF' ? (
-                                    <div className="h-9 bg-blue-50 border border-border rounded-lg px-3 flex items-center">
-                                        <span className="text-sm font-semibold text-primary">
-                                            {branches.find(b => b.id === formData.branchId)?.name || 'Your Branch'}
-                                        </span>
-                                        <span className="ml-2 text-xs text-blue-400">(Your branch)</span>
-                                    </div>
-                                ) : (
-                                    <Select
-                                        value={formData.branchId}
-                                        onValueChange={(val) => setFormData({...formData, branchId: val})}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Gender</Label>
+                                    <Select 
+                                        value={formData.gender} 
+                                        onValueChange={(val) => setFormData({...formData, gender: val})}
                                     >
-                                        <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                                        <SelectTrigger><SelectValue placeholder="Select Gender" /></SelectTrigger>
                                         <SelectContent>
-                                            {branches.map(branch => (
-                                                <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
-                                            ))}
+                                            <SelectItem value="MALE">Male</SelectItem>
+                                            <SelectItem value="FEMALE">Female</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Assigned Branch</Label>
+                                    {user?.role === 'STAFF' ? (
+                                        <div className="h-9 bg-blue-50 border border-border rounded-lg px-3 flex items-center">
+                                            <span className="text-sm font-semibold text-primary">
+                                                {branches.find(b => b.id === formData.branchId)?.name || 'Your Branch'}
+                                            </span>
+                                            <span className="ml-2 text-xs text-blue-400">(Your branch)</span>
+                                        </div>
+                                    ) : (
+                                        <Select
+                                            value={formData.branchId}
+                                            onValueChange={(val) => setFormData({...formData, branchId: val})}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                                            <SelectContent>
+                                                {branches.map(branch => (
+                                                    <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

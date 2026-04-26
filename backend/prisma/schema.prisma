@@ -202,6 +202,7 @@ model Coach {
   name     String
   email    String
   phone    String
+  gender   Gender  @default(MALE)
   branchId String
   isActive Boolean @default(true)
   createdAt DateTime @default(now())

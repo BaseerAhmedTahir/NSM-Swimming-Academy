@@ -333,19 +333,27 @@ export default function SchedulePage() {
                                 <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-black text-foreground bg-card sticky left-0 top-0 z-40">
                                     Time
                                 </div>
-                                {Object.keys(currentSchedule).map(coach => {
-                                    const coachSlots = Object.values(currentSchedule[coach]).flat() as any[];
-                                    const bookedCount = coachSlots.filter(Boolean).length;
-                                    const attendedCount = coachSlots.filter(s => s?.status === 'Attended' || s?.status === 'ATTENDED').length;
-                                    
-                                    return (
-                                        <div key={coach} className="flex-1 min-w-[200px] py-4 px-4 font-bold text-center border-r border-border/50 last:border-0 relative hover:bg-muted/30 transition-colors cursor-pointer group">
-                                            <h3 className="text-primaryDark">{coach}</h3>
-                                            <p className="text-xs text-muted-foreground font-medium mt-1">{isPast ? `${attendedCount} Students Attended` : `${bookedCount} Students Booked`}</p>
-                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-primary/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-                                        </div>
-                                    );
-                                })}
+                                    {Object.keys(currentSchedule).map(coach => {
+                                        const coachSlots = Object.values(currentSchedule[coach]).flat() as any[];
+                                        const bookedCount = coachSlots.filter(Boolean).length;
+                                        const attendedCount = coachSlots.filter(s => s?.status === 'Attended' || s?.status === 'ATTENDED').length;
+                                        const coachObj = coachesList.find(c => c.name === coach);
+                                        const isFemale = coachObj?.gender === 'FEMALE';
+                                        
+                                        return (
+                                            <div key={coach} className={cn(
+                                                "flex-1 min-w-[200px] py-4 px-4 font-bold text-center border-r border-border/50 last:border-0 relative transition-colors cursor-pointer group",
+                                                isFemale ? "hover:bg-pink-50/50" : "hover:bg-muted/30"
+                                            )}>
+                                                <h3 className={cn("font-black", isFemale ? "text-pink-600" : "text-primaryDark")}>{coach}</h3>
+                                                <p className="text-xs text-muted-foreground font-medium mt-1">{isPast ? `${attendedCount} Students Attended` : `${bookedCount} Students Booked`}</p>
+                                                <div className={cn(
+                                                    "absolute inset-x-0 bottom-0 h-1 scale-x-0 group-hover:scale-x-100 transition-transform origin-left",
+                                                    isFemale ? "bg-pink-500" : "bg-primary/20"
+                                                )} />
+                                            </div>
+                                        );
+                                    })}
                             </div>
 
                             {/* Data Rows - Times */}
@@ -380,12 +388,13 @@ export default function SchedulePage() {
                                                             <Popover key={cellId}>
                                                                 <PopoverTrigger asChild>
                                                                     <button
-                                                                        className={cn(
+                                                                            className={cn(
                                                                             "w-full text-left px-3 py-2 rounded-lg text-sm border font-medium transition-all group/cell flex items-center justify-between",
                                                                             status === 'Attended' && "bg-[#FFF176] border-[#FBC02D] text-[#F57F17] shadow-sm",
                                                                             status === 'Absent' && "bg-red-500 border-red-600 text-white shadow-sm",
                                                                             status === 'Informed' && "bg-blue-500 border-blue-600 text-white shadow-sm",
-                                                                            status === 'Pending' && "bg-background border-border hover:border-primary/50 text-foreground hover:bg-muted/30"
+                                                                            status === 'Pending' && studentData.gender === 'FEMALE' && "bg-pink-50 border-pink-200 hover:border-pink-400 text-pink-700 hover:bg-pink-100/50 shadow-[0_2px_10px_-3px_rgba(236,72,153,0.2)]",
+                                                                            status === 'Pending' && studentData.gender !== 'FEMALE' && "bg-background border-border hover:border-primary/50 text-foreground hover:bg-muted/30"
                                                                         )}
                                                                         disabled={isPast && status === 'Pending'}
                                                                     >

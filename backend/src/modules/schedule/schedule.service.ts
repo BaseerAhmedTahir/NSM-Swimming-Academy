@@ -7,7 +7,7 @@ export const getScheduleGrid = async (dateStr: string, branchId: string) => {
 
     const coaches = await prisma.coach.findMany({
         where: { branchId, isActive: true },
-        select: { id: true, name: true }
+        select: { id: true, name: true, gender: true }
     });
 
     const schedules = await prisma.schedule.findMany({
@@ -15,7 +15,7 @@ export const getScheduleGrid = async (dateStr: string, branchId: string) => {
         include: {
             slots: {
                 include: {
-                    student: { select: { id: true, name: true, level: true, status: true } },
+                    student: { select: { id: true, name: true, level: true, status: true, gender: true } },
                     attendanceRecord: { select: { id: true, status: true } }
                 }
             }
