@@ -15,6 +15,7 @@ export const updateCoachSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
     phone: z.string().optional(),
+    branchId: z.string().uuid().optional(),
     isActive: z.boolean().optional()
   })
 });

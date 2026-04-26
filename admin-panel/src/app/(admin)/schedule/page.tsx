@@ -319,8 +319,8 @@ export default function SchedulePage() {
             </div>
 
             {/* Main Schedule Grid Container */}
-            <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto custom-scrollbar">
+            <div className="bg-card rounded-2xl border border-border/50 shadow-sm flex flex-col h-[calc(100vh-160px)]">
+                <div className="flex-1 overflow-auto custom-scrollbar rounded-2xl relative bg-card">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center p-20 text-center">
                             <p className="font-bold text-muted-foreground">Loading schedule...</p>
@@ -329,8 +329,8 @@ export default function SchedulePage() {
                         <div className="min-w-[1000px] w-full border-collapse pb-6">
 
                             {/* Header Row - Coaches */}
-                            <div className="flex border-b border-border/50 bg-muted/10 sticky top-0 z-10 w-max min-w-full">
-                                <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-black text-foreground bg-card sticky left-0 z-20">
+                            <div className="flex border-b border-border/50 bg-card sticky top-0 z-30 w-max min-w-full shadow-sm">
+                                <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-black text-foreground bg-card sticky left-0 top-0 z-40">
                                     Time
                                 </div>
                                 {Object.keys(currentSchedule).map(coach => {
@@ -354,7 +354,7 @@ export default function SchedulePage() {
                                     <div key={time} className="flex border-b border-border/50 last:border-0 hover:bg-muted/5 transition-colors group">
 
                                         {/* Time Column Fixed Left */}
-                                        <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-bold text-xs text-muted-foreground bg-card group-hover:text-primary transition-colors sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                        <div className="w-24 shrink-0 flex items-center justify-center border-r border-border/50 py-4 px-2 font-bold text-xs text-muted-foreground bg-card group-hover:text-primary transition-colors sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                             {time}
                                         </div>
 

@@ -115,6 +115,7 @@ export function Sidebar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                title={collapsed ? item.title : ""}
                                 className={cn(
                                     "flex items-center rounded-xl transition-all duration-200 group relative",
                                     collapsed ? "justify-center h-12 w-12 mx-auto" : "px-4 py-3",
@@ -136,13 +137,6 @@ export function Sidebar() {
                                 {isActive && collapsed && (
                                     <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full" />
                                 )}
-
-                                {/* Tooltip for collapsed state */}
-                                {collapsed && (
-                                    <div className="absolute left-14 bg-popover text-popover-foreground px-2 py-1 rounded-md text-sm font-semibold opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-md z-50">
-                                        {item.title}
-                                    </div>
-                                )}
                             </Link>
                         );
                     })}
@@ -151,11 +145,8 @@ export function Sidebar() {
                 {/* Bottom Branch Indicator */}
                 <div className="p-4 border-t border-border/50 bg-muted/30">
                     {collapsed ? (
-                        <div className="w-10 h-10 mx-auto bg-card border border-border rounded-lg flex items-center justify-center group relative">
+                        <div className="w-10 h-10 mx-auto bg-card border border-border rounded-lg flex items-center justify-center group relative cursor-help">
                             <span className="text-xs font-bold text-primaryDark">{user?.branch?.name?.substring(0, 3)?.toUpperCase() || 'HQ'}</span>
-                            <div className="absolute left-12 bottom-0 bg-popover text-popover-foreground px-2 py-1 rounded-md text-sm font-semibold opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap shadow-md z-50">
-                                {user?.role === 'SUPER_ADMIN' ? 'Global Admin' : user?.branch?.name || 'Local Admin'}
-                            </div>
                         </div>
                     ) : (
                         <div className="bg-card border border-border rounded-xl p-3 flex flex-col items-start shadow-sm">

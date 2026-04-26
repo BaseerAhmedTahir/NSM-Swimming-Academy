@@ -80,7 +80,30 @@ export const updateCoach = async (id: string, branchId: string | undefined, data
     const where = branchId ? { id, branchId } : { id };
     
     // Ensure coach exists and is accessible
-    await prisma.coach.findFirstOrThrow({ where });
+    const existingCoach = await prisma.coach.findFirstOrThrow({ where });
+
+    // Handle branch move (re-generate coachId)
+    if (data.branchId && data.branchId !== existingCoach.branchId) {
+        const branch = await prisma.branch.findUniqueOrThrow({ where: { id: data.branchId } });
+
+        // Find the coach with the highest sequence number in the NEW branch
+        const lastCoach = await prisma.coach.findFirst({
+            where: { branchId: data.branchId },
+            orderBy: { createdAt: 'desc' },
+            select: { coachId: true }
+        });
+
+        let nextSequence = 1;
+        if (lastCoach && lastCoach.coachId) {
+            const parts = lastCoach.coachId.split('-');
+            const lastSeq = parseInt(parts[parts.length - 1]);
+            if (!isNaN(lastSeq)) {
+                nextSequence = lastSeq + 1;
+            }
+        }
+
+        data.coachId = generateCoachId(branch.code, nextSequence);
+    }
 
     return await prisma.coach.update({
         where: { id },
