@@ -155,7 +155,8 @@ export default function RegistrationPage() {
     const [renewData, setRenewData] = useState({
         packageType: "BASIC",
         paymentMode: "CARD",
-        paymentStatus: "PAID"
+        paymentStatus: "PAID",
+        paidAmount: 0
     });
 
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -1065,6 +1066,18 @@ export default function RegistrationPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            {renewData.paymentStatus === 'PARTIAL' && (
+                                <div className="space-y-2">
+                                    <Label>Paid Amount (AED)</Label>
+                                    <Input 
+                                        type="number" 
+                                        min="0"
+                                        placeholder="Enter amount paid"
+                                        value={renewData.paidAmount || ''}
+                                        onChange={(e) => setRenewData({...renewData, paidAmount: parseFloat(e.target.value) || 0})}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="bg-muted/10 p-6 border-t border-border/50 flex justify-end gap-3">

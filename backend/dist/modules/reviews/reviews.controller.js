@@ -33,17 +33,41 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const settingsController = __importStar(require("./settings.controller"));
-const auth_1 = require("../../middleware/auth");
-const rbac_1 = require("../../middleware/rbac");
-const validate_1 = require("../../middleware/validate");
-const settings_schema_1 = require("./settings.schema");
-const router = (0, express_1.Router)();
-router.use(auth_1.authenticate);
-// Everyone authenticated can GET settings (used by frontend to get time-slots, packages, etc)
-router.get('/', settingsController.getSettings);
-// Only Super Admin can modify settings
-router.post('/bulk', (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(settings_schema_1.saveSettingsSchema), settingsController.saveSettings);
-router.delete('/:key', (0, rbac_1.authorize)(['SUPER_ADMIN']), settingsController.deleteSetting);
-exports.default = router;
+exports.submitReview = exports.getStats = exports.getAll = void 0;
+const reviewsService = __importStar(require("./reviews.service"));
+const getAll = async (req, res, next) => {
+    try {
+        const branchId = req.user?.role === 'STAFF' ? req.user.branchId : undefined;
+        const data = await reviewsService.getAllReviews(req.query, branchId);
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getAll = getAll;
+const getStats = async (req, res, next) => {
+    try {
+        const branchId = req.user?.role === 'STAFF' ? req.user.branchId : req.query.branchId;
+        const data = await reviewsService.getReviewStats(branchId);
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getStats = getStats;
+const submitReview = async (req, res, next) => {
+    try {
+        const studentId = req.user?.id;
+        const branchId = req.user?.branchId;
+        if (!studentId)
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const review = await reviewsService.createReview(studentId, branchId, req.body);
+        res.status(201).json({ success: true, data: review });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.submitReview = submitReview;

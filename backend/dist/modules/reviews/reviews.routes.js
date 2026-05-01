@@ -34,16 +34,15 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const settingsController = __importStar(require("./settings.controller"));
+const reviewsController = __importStar(require("./reviews.controller"));
 const auth_1 = require("../../middleware/auth");
 const rbac_1 = require("../../middleware/rbac");
 const validate_1 = require("../../middleware/validate");
-const settings_schema_1 = require("./settings.schema");
+const reviews_schema_1 = require("./reviews.schema");
 const router = (0, express_1.Router)();
-router.use(auth_1.authenticate);
-// Everyone authenticated can GET settings (used by frontend to get time-slots, packages, etc)
-router.get('/', settingsController.getSettings);
-// Only Super Admin can modify settings
-router.post('/bulk', (0, rbac_1.authorize)(['SUPER_ADMIN']), (0, validate_1.validate)(settings_schema_1.saveSettingsSchema), settingsController.saveSettings);
-router.delete('/:key', (0, rbac_1.authorize)(['SUPER_ADMIN']), settingsController.deleteSetting);
+// Admin routes — read reviews
+router.get('/', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN', 'STAFF']), reviewsController.getAll);
+router.get('/stats', auth_1.authenticate, (0, rbac_1.authorize)(['SUPER_ADMIN', 'STAFF']), reviewsController.getStats);
+// Student route — submit a review
+router.post('/', auth_1.authenticate, (0, rbac_1.authorize)(['STUDENT']), (0, validate_1.validate)(reviews_schema_1.createReviewSchema), reviewsController.submitReview);
 exports.default = router;

@@ -63,7 +63,7 @@ export const searchStudents = async (query: string, branchId?: string) => {
 };
 
 export const getAllStudents = async (queryArgs: any, branchId?: string) => {
-    // Soft update expired students dynamically
+    // Soft update expired students dynamically (Date-based)
     await prisma.student.updateMany({
         where: {
             status: 'ACTIVE',
@@ -71,6 +71,23 @@ export const getAllStudents = async (queryArgs: any, branchId?: string) => {
         },
         data: { status: 'EXPIRED' }
     });
+
+    // Soft update students who have used all their classes
+    const activeMemberships = await prisma.membershipHistory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
+    });
+    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
+    if (exhaustedIds.length > 0) {
+        await prisma.student.updateMany({
+            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'EXPIRED' }
+        });
+        await prisma.membershipHistory.updateMany({
+            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'COMPLETED' }
+        });
+    }
 
     const { page, limit, skip } = getPaginationOptions(queryArgs?.page, queryArgs?.limit);
     
@@ -572,6 +589,32 @@ export const getStudentMembershipHistory = async (id: string, branchId?: string)
 // - COMPLETED/EXPIRED history = students who expired and have since been renewed (permanent history)
 // - ACTIVE history for EXPIRED students = newly expired, not yet renewed (current expired screen)
 export const getExpiredHistory = async (branchId?: string) => {
+    // Soft update expired students dynamically (Date-based)
+    await prisma.student.updateMany({
+        where: {
+            status: 'ACTIVE',
+            membershipExpiryDate: { lt: new Date() }
+        },
+        data: { status: 'EXPIRED' }
+    });
+
+    // Soft update students who have used all their classes
+    const activeMemberships = await prisma.membershipHistory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
+    });
+    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
+    if (exhaustedIds.length > 0) {
+        await prisma.student.updateMany({
+            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'EXPIRED' }
+        });
+        await prisma.membershipHistory.updateMany({
+            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'COMPLETED' }
+        });
+    }
+
     const studentWhere = branchId ? { branchId } : {};
     return await prisma.membershipHistory.findMany({
         where: {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
+exports.deleteReview = exports.submitReview = exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
 const database_1 = require("../../config/database");
 const errors_1 = require("../../utils/errors");
 const client_1 = require("@prisma/client");
@@ -17,23 +17,39 @@ const getProfile = async (studentId) => {
                 orderBy: { createdAt: 'desc' },
                 take: 1,
                 select: { totalClasses: true, classesUsed: true }
+            },
+            payments: {
+                orderBy: { paymentDate: 'desc' },
+                take: 1,
+                select: {
+                    id: true, status: true,
+                    totalAmount: true, paidAmount: true, pendingAmount: true,
+                    paymentDate: true
+                }
+            },
+            reviews: {
+                take: 1,
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, rating: true, text: true }
             }
         }
     });
     // Flatten active membership for easy consumption in mobile app
     const activeMembership = student.membershipHistory[0] || null;
-    const { membershipHistory: _, ...studentData } = student;
+    const { membershipHistory: _, reviews, ...studentData } = student;
     return {
         ...studentData,
         totalClasses: activeMembership?.totalClasses ?? 0,
         classesUsed: activeMembership?.classesUsed ?? 0,
+        review: reviews[0] || null,
     };
 };
 exports.getProfile = getProfile;
 const getSchedule = async (studentId) => {
-    return await database_1.prisma.scheduleSlot.findMany({
+    const slots = await database_1.prisma.scheduleSlot.findMany({
         where: { studentId },
         include: {
+            attendanceRecord: { select: { status: true } },
             schedule: {
                 include: {
                     coach: { select: { name: true } },
@@ -43,6 +59,10 @@ const getSchedule = async (studentId) => {
         },
         orderBy: { schedule: { date: 'asc' } }
     });
+    return slots.map(slot => ({
+        ...slot,
+        status: slot.attendanceRecord?.status || 'Upcoming'
+    }));
 };
 exports.getSchedule = getSchedule;
 const getAttendance = async (studentId) => {
@@ -119,3 +139,35 @@ const cancelClass = async (studentId, scheduleSlotId) => {
     return { success: true, message: 'Class cancelled successfully' };
 };
 exports.cancelClass = cancelClass;
+const submitReview = async (studentId, branchId, data) => {
+    const existing = await database_1.prisma.review.findFirst({ where: { studentId } });
+    if (existing) {
+        return await database_1.prisma.review.update({
+            where: { id: existing.id },
+            data: {
+                rating: data.rating,
+                text: data.text || null,
+                branchId: branchId || null
+            }
+        });
+    }
+    return await database_1.prisma.review.create({
+        data: {
+            studentId,
+            branchId: branchId || null,
+            rating: data.rating,
+            text: data.text || null,
+        }
+    });
+};
+exports.submitReview = submitReview;
+const deleteReview = async (studentId) => {
+    const result = await database_1.prisma.review.deleteMany({
+        where: { studentId }
+    });
+    if (result.count === 0) {
+        throw new errors_1.NotFoundError('Review not found');
+    }
+    return { success: true, message: 'Review deleted successfully' };
+};
+exports.deleteReview = deleteReview;

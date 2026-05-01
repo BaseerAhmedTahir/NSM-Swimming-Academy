@@ -39,6 +39,7 @@ const auth_1 = require("../../middleware/auth");
 const rbac_1 = require("../../middleware/rbac");
 const validate_1 = require("../../middleware/validate");
 const student_app_schema_1 = require("./student-app.schema");
+const reviews_schema_1 = require("../reviews/reviews.schema");
 const router = (0, express_1.Router)();
 // Only authenticated students
 router.use(auth_1.authenticate);
@@ -50,4 +51,6 @@ router.get('/payments', studentAppController.getPayments);
 router.get('/notifications', studentAppController.getNotifications);
 router.post('/notifications/:id/read', studentAppController.markNotificationRead);
 router.post('/cancel-class', (0, validate_1.validate)(student_app_schema_1.cancelClassSchema), studentAppController.cancelClass);
+router.post('/review', (0, validate_1.validate)(reviews_schema_1.createReviewSchema), studentAppController.submitReview);
+router.delete('/review', studentAppController.deleteReview);
 exports.default = router;

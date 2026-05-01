@@ -32,10 +32,28 @@ export const assignSlot = async (data: any, branchId: string) => {
     return await prisma.$transaction(async (tx: any) => {
         // Ensure student belongs to this branch and is active
         const student = await tx.student.findFirst({
-            where: { id: data.studentId, branchId }
+            where: { id: data.studentId, branchId },
+            include: { membershipHistory: { where: { status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, take: 1 } }
         });
         if (!student || student.status !== 'ACTIVE') {
             throw new ConflictError('Student not found or not active in this branch');
+        }
+
+        const activeMembership = student.membershipHistory?.[0];
+        if (!activeMembership) {
+            throw new ConflictError('No active membership found for student');
+        }
+
+        // Count future or unmarked scheduled slots
+        const futureSlots = await tx.scheduleSlot.count({
+            where: {
+                studentId: data.studentId,
+                attendanceRecord: null
+            }
+        });
+
+        if (activeMembership.classesUsed + futureSlots >= activeMembership.totalClasses) {
+            throw new ConflictError(`Cannot schedule more classes. Package allows ${activeMembership.totalClasses} classes, student has used ${activeMembership.classesUsed} and is scheduled for ${futureSlots} upcoming classes.`);
         }
 
         // Find or create schedule block for this coach on this date

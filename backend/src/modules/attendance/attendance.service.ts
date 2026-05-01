@@ -56,10 +56,22 @@ export const markAttendance = async (data: any, branchId: string | undefined, ma
             });
 
             if (history) {
-                await tx.membershipHistory.update({
+                const updatedHistory = await tx.membershipHistory.update({
                     where: { id: history.id },
                     data: { classesUsed: { increment: 1 } }
                 });
+
+                // Auto-expire if classes are fully used
+                if (updatedHistory.classesUsed >= history.totalClasses) {
+                    await tx.membershipHistory.update({
+                        where: { id: history.id },
+                        data: { status: 'COMPLETED' }
+                    });
+                    await tx.student.update({
+                        where: { id: data.studentId },
+                        data: { status: 'EXPIRED' }
+                    });
+                }
             }
         }
 
@@ -108,23 +120,50 @@ export const updateAttendance = async (id: string, branchId: string | undefined,
 
         if (existing.status !== data.status) {
             const history = await tx.membershipHistory.findFirst({
-                where: { studentId: existing.studentId, status: 'ACTIVE' },
+                where: { studentId: existing.studentId, status: { in: ['ACTIVE', 'COMPLETED'] } },
                 orderBy: { createdAt: 'desc' }
             });
 
             if (history) {
                 if (existing.status === 'ATTENDED' && data.status !== 'ATTENDED') {
                     // Decrement used classes
-                    await tx.membershipHistory.update({
+                    const updatedHistory = await tx.membershipHistory.update({
                         where: { id: history.id },
                         data: { classesUsed: { decrement: 1 } }
                     });
+                    
+                    // Reactivate if they dropped below totalClasses and are currently COMPLETED
+                    if (updatedHistory.classesUsed < history.totalClasses && history.status === 'COMPLETED') {
+                        // Also check if membershipExpiryDate hasn't passed
+                        const student = await tx.student.findUnique({ where: { id: existing.studentId } });
+                        if (student && (!student.membershipExpiryDate || student.membershipExpiryDate >= new Date())) {
+                            await tx.membershipHistory.update({
+                                where: { id: history.id },
+                                data: { status: 'ACTIVE' }
+                            });
+                            await tx.student.update({
+                                where: { id: existing.studentId },
+                                data: { status: 'ACTIVE' }
+                            });
+                        }
+                    }
                 } else if (existing.status !== 'ATTENDED' && data.status === 'ATTENDED') {
                     // Increment used classes
-                    await tx.membershipHistory.update({
+                    const updatedHistory = await tx.membershipHistory.update({
                         where: { id: history.id },
                         data: { classesUsed: { increment: 1 } }
                     });
+
+                    if (updatedHistory.classesUsed >= history.totalClasses) {
+                        await tx.membershipHistory.update({
+                            where: { id: history.id },
+                            data: { status: 'COMPLETED' }
+                        });
+                        await tx.student.update({
+                            where: { id: existing.studentId },
+                            data: { status: 'EXPIRED' }
+                        });
+                    }
                 }
             }
         }

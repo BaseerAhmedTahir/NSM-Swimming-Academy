@@ -15,7 +15,8 @@ const getNotifications = async (userId, targetId, branchId, queryArgs) => {
             OR: [
                 { sentTo: 'ALL' },
                 { sentTo: 'BRANCH', branchId },
-                { sentTo: 'INDIVIDUAL', targetId }
+                { sentTo: 'INDIVIDUAL', targetId },
+                { studentNotifications: { some: { studentId: targetId } } }
             ]
         };
     }
@@ -66,6 +67,20 @@ const createNotification = async (data, adminBranchId) => {
     }
     else if (data.sentTo === 'ALL') {
         const students = await database_1.prisma.student.findMany({ select: { id: true } });
+        if (students.length > 0) {
+            await database_1.prisma.studentNotification.createMany({
+                data: students.map(s => ({ notificationId: notification.id, studentId: s.id }))
+            });
+        }
+    }
+    else if (data.sentTo === 'PENDING_FEES') {
+        const whereClause = {
+            payments: { some: { status: { in: ['PENDING', 'OVERDUE'] } } }
+        };
+        if (branchId) {
+            whereClause.branchId = branchId;
+        }
+        const students = await database_1.prisma.student.findMany({ where: whereClause, select: { id: true } });
         if (students.length > 0) {
             await database_1.prisma.studentNotification.createMany({
                 data: students.map(s => ({ notificationId: notification.id, studentId: s.id }))

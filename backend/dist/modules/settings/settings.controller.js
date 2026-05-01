@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveSettings = exports.getSettings = void 0;
+exports.deleteSetting = exports.saveSettings = exports.getSettings = void 0;
 const settingsService = __importStar(require("./settings.service"));
 const response_1 = require("../../utils/response");
 const getSettings = async (req, res, next) => {
@@ -58,3 +58,14 @@ const saveSettings = async (req, res, next) => {
     }
 };
 exports.saveSettings = saveSettings;
+const deleteSetting = async (req, res, next) => {
+    try {
+        const key = req.params.key;
+        await settingsService.deleteSetting(key);
+        return (0, response_1.successResponse)({ res, message: 'Setting deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteSetting = deleteSetting;

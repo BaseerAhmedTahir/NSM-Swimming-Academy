@@ -8,14 +8,14 @@ const getScheduleGrid = async (dateStr, branchId) => {
     targetDate.setUTCHours(0, 0, 0, 0);
     const coaches = await database_1.prisma.coach.findMany({
         where: { branchId, isActive: true },
-        select: { id: true, name: true }
+        select: { id: true, name: true, gender: true }
     });
     const schedules = await database_1.prisma.schedule.findMany({
         where: { branchId, date: targetDate },
         include: {
             slots: {
                 include: {
-                    student: { select: { id: true, name: true, level: true, status: true } },
+                    student: { select: { id: true, name: true, level: true, status: true, gender: true } },
                     attendanceRecord: { select: { id: true, status: true } }
                 }
             }
@@ -30,10 +30,25 @@ const assignSlot = async (data, branchId) => {
     return await database_1.prisma.$transaction(async (tx) => {
         // Ensure student belongs to this branch and is active
         const student = await tx.student.findFirst({
-            where: { id: data.studentId, branchId }
+            where: { id: data.studentId, branchId },
+            include: { membershipHistory: { where: { status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, take: 1 } }
         });
         if (!student || student.status !== 'ACTIVE') {
             throw new errors_1.ConflictError('Student not found or not active in this branch');
+        }
+        const activeMembership = student.membershipHistory?.[0];
+        if (!activeMembership) {
+            throw new errors_1.ConflictError('No active membership found for student');
+        }
+        // Count future or unmarked scheduled slots
+        const futureSlots = await tx.scheduleSlot.count({
+            where: {
+                studentId: data.studentId,
+                attendanceRecord: null
+            }
+        });
+        if (activeMembership.classesUsed + futureSlots >= activeMembership.totalClasses) {
+            throw new errors_1.ConflictError(`Cannot schedule more classes. Package allows ${activeMembership.totalClasses} classes, student has used ${activeMembership.classesUsed} and is scheduled for ${futureSlots} upcoming classes.`);
         }
         // Find or create schedule block for this coach on this date
         let schedule = await tx.schedule.findUnique({

@@ -11,7 +11,7 @@ exports.createPaymentSchema = zod_1.z.object({
         paidAmount: zod_1.z.number().min(0),
         paymentMode: zod_1.z.enum(['CASH', 'CARD', 'ONLINE']),
         status: zod_1.z.enum(['PAID', 'PENDING', 'PARTIAL', 'OVERDUE', 'REFUNDED']),
-        packageType: zod_1.z.enum(['BASIC', 'SILVER', 'GOLD', 'PLATINUM', 'INDIVIDUAL']),
+        packageType: zod_1.z.string(),
         registrationType: zod_1.z.enum(['NEW', 'RENEW']),
         isInstallment: zod_1.z.boolean().default(false),
         notes: zod_1.z.string().optional()

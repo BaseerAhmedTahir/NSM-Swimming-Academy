@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markNotificationRead = exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
+exports.deleteReview = exports.submitReview = exports.markNotificationRead = exports.cancelClass = exports.getNotifications = exports.getPayments = exports.getAttendance = exports.getSchedule = exports.getProfile = void 0;
 const studentAppService = __importStar(require("./student-app.service"));
 const response_1 = require("../../utils/response");
 const database_1 = require("../../config/database");
@@ -113,3 +113,26 @@ const markNotificationRead = async (req, res, next) => {
     }
 };
 exports.markNotificationRead = markNotificationRead;
+const submitReview = async (req, res, next) => {
+    try {
+        const studentId = String(req.user.id);
+        const branchId = req.user.branchId ? String(req.user.branchId) : undefined;
+        const data = await studentAppService.submitReview(studentId, branchId, req.body);
+        return (0, response_1.successResponse)({ res, data, statusCode: 201, message: 'Review submitted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.submitReview = submitReview;
+const deleteReview = async (req, res, next) => {
+    try {
+        const studentId = String(req.user.id);
+        const data = await studentAppService.deleteReview(studentId);
+        return (0, response_1.successResponse)({ res, data, message: 'Review deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteReview = deleteReview;

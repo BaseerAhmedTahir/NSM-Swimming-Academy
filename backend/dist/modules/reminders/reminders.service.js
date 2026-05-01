@@ -75,9 +75,26 @@ const createReminder = async (data, adminBranchId, createdById) => {
     else if (data.reminderFor)
         reminderFor = data.reminderFor;
     // branchId is the creator's branch (required by schema)
-    const branchId = adminBranchId || data.branchId;
-    if (!branchId)
-        throw new Error('Reminder requires a branch context. Please log in as a branch admin.');
+    // For SUPER_ADMIN (no branchId):
+    //   - If targeting a branch, use that branch as the context
+    //   - If self-reminder, fall back to any available branch in the DB
+    let branchId = adminBranchId || data.branchId || null;
+    if (!branchId) {
+        if (reminderFor === 'OTHER_BRANCH' && data.targetValue) {
+            // Use the target branch as the context branch for super-admin
+            branchId = data.targetValue;
+        }
+        else {
+            // Self-reminder from SUPER_ADMIN — use first available branch as context
+            const firstBranch = await database_1.prisma.branch.findFirst({
+                where: { isActive: true },
+                select: { id: true }
+            });
+            if (!firstBranch)
+                throw new Error('No active branches found. Please create a branch first.');
+            branchId = firstBranch.id;
+        }
+    }
     return await database_1.prisma.reminder.create({
         data: {
             createdById: createdById,

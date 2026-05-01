@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveSettingsBulk = exports.getSettingsByCategory = void 0;
+exports.deleteSetting = exports.saveSettingsBulk = exports.getSettingsByCategory = void 0;
 const database_1 = require("../../config/database");
 const getSettingsByCategory = async (category) => {
     // Schema doesn't have an explicit category field, so we just return all settings or we could filter by key prefix if we wanted to.
@@ -21,3 +21,13 @@ const saveSettingsBulk = async (settingsArray) => {
     return results;
 };
 exports.saveSettingsBulk = saveSettingsBulk;
+const deleteSetting = async (key) => {
+    try {
+        await database_1.prisma.setting.delete({ where: { key } });
+    }
+    catch (e) {
+        // ignore if not found
+    }
+    return true;
+};
+exports.deleteSetting = deleteSetting;

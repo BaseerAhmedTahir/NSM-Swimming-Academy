@@ -26,7 +26,13 @@ const freezings_routes_1 = __importDefault(require("./modules/freezings/freezing
 const reports_routes_1 = __importDefault(require("./modules/reports/reports.routes"));
 const settings_routes_1 = __importDefault(require("./modules/settings/settings.routes"));
 const student_app_routes_1 = __importDefault(require("./modules/student-app/student-app.routes"));
+const reviews_routes_1 = __importDefault(require("./modules/reviews/reviews.routes"));
+const expenses_routes_1 = __importDefault(require("./modules/expenses/expenses.routes"));
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+const swagger_1 = require("./config/swagger");
 const app = (0, express_1.default)();
+// Trust proxy for rate limiting (essential for Railway/Heroku/Cloudflare)
+app.set('trust proxy', 1);
 // Security Middlewares
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)(cors_2.corsOptions));
@@ -54,10 +60,10 @@ app.use(`${env_1.env.API_PREFIX}/reminders`, reminders_routes_1.default);
 app.use(`${env_1.env.API_PREFIX}/cancellations`, cancellations_routes_1.default);
 app.use(`${env_1.env.API_PREFIX}/freezings`, freezings_routes_1.default);
 app.use(`${env_1.env.API_PREFIX}/reports`, reports_routes_1.default);
-const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
-const swagger_1 = require("./config/swagger");
 app.use(`${env_1.env.API_PREFIX}/settings`, settings_routes_1.default);
 app.use(`${env_1.env.API_PREFIX}/student-app`, student_app_routes_1.default);
+app.use(`${env_1.env.API_PREFIX}/reviews`, reviews_routes_1.default);
+app.use(`${env_1.env.API_PREFIX}/expenses`, expenses_routes_1.default);
 // Swagger Documentation
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
 // 404 Handler

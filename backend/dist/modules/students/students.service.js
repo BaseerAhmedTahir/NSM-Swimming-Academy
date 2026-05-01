@@ -10,9 +10,15 @@ const generateId_1 = require("../../utils/generateId");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const email_1 = require("../../utils/email");
 // Helper: Dynamic package pricing lookup from Settings with fallback
-const getPackageDetails = async (type, txClient = database_1.prisma) => {
-    const settingKey = `PACKAGE_${type}`;
-    const setting = await txClient.setting.findUnique({ where: { key: settingKey } });
+const getPackageDetails = async (type, branchId, txClient = database_1.prisma) => {
+    let settingKey = `PACKAGE_${type}`;
+    let setting = null;
+    if (branchId) {
+        setting = await txClient.setting.findUnique({ where: { key: `${settingKey}_${branchId}` } });
+    }
+    if (!setting) {
+        setting = await txClient.setting.findUnique({ where: { key: settingKey } });
+    }
     if (setting) {
         try {
             const parsed = JSON.parse(setting.value);
@@ -58,7 +64,7 @@ const searchStudents = async (query, branchId) => {
 };
 exports.searchStudents = searchStudents;
 const getAllStudents = async (queryArgs, branchId) => {
-    // Soft update expired students dynamically
+    // Soft update expired students dynamically (Date-based)
     await database_1.prisma.student.updateMany({
         where: {
             status: 'ACTIVE',
@@ -66,6 +72,22 @@ const getAllStudents = async (queryArgs, branchId) => {
         },
         data: { status: 'EXPIRED' }
     });
+    // Soft update students who have used all their classes
+    const activeMemberships = await database_1.prisma.membershipHistory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
+    });
+    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
+    if (exhaustedIds.length > 0) {
+        await database_1.prisma.student.updateMany({
+            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'EXPIRED' }
+        });
+        await database_1.prisma.membershipHistory.updateMany({
+            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'COMPLETED' }
+        });
+    }
     const { page, limit, skip } = (0, pagination_1.getPaginationOptions)(queryArgs?.page, queryArgs?.limit);
     const where = {};
     if (branchId)
@@ -127,7 +149,9 @@ exports.getStudentById = getStudentById;
 // Admin directly creates an ACTIVE student (which generates payment + invoice)
 const createStudent = async (data, adminBranchId) => {
     const branchId = data.branchId || adminBranchId;
-    return await database_1.prisma.$transaction(async (tx) => {
+    const tempPassword = data.password; // Capture plaintext before hashing
+    // 1. Database Operations in Transaction
+    const transactionResult = await database_1.prisma.$transaction(async (tx) => {
         const branch = await tx.branch.findUniqueOrThrow({ where: { id: branchId } });
         // Find the student with the highest sequence number in this branch to avoid collisions
         const lastStudent = await tx.student.findFirst({
@@ -144,11 +168,13 @@ const createStudent = async (data, adminBranchId) => {
             }
         }
         const studentId = (0, generateId_1.generateStudentId)(branch.code, nextSequence);
-        const tempPassword = data.password; // Capture plaintext before hashing
-        const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
-        const packageInfo = await getPackageDetails(data.packageType, tx);
+        const hashedPassword = await bcryptjs_1.default.hash(tempPassword, 10);
+        const packageInfo = await getPackageDetails(data.packageType, branchId, tx);
         const amount = packageInfo.price;
-        const totalAmount = amount - (data.discount || 0);
+        const discountAmount = data.discount || 0;
+        const subTotal = Math.max(0, amount - discountAmount);
+        const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+        const totalAmount = subTotal + vatAmount;
         const startDate = new Date();
         const expiryDate = new Date();
         expiryDate.setMonth(expiryDate.getMonth() + (packageInfo.durationMonths || 1));
@@ -183,9 +209,14 @@ const createStudent = async (data, adminBranchId) => {
             }
         }
         const invoiceNumber = (0, generateId_1.generateInvoiceNumber)(branch.code, nextPaySequence);
-        const isPaid = data.paymentStatus === 'PAID';
-        const paidAmount = isPaid ? totalAmount : 0;
-        const pendingAmount = isPaid ? 0 : totalAmount;
+        let paidAmount = 0;
+        if (data.paymentStatus === 'PAID') {
+            paidAmount = totalAmount;
+        }
+        else if (data.paymentStatus === 'PARTIAL' && data.paidAmount !== undefined) {
+            paidAmount = data.paidAmount;
+        }
+        const pendingAmount = Math.max(0, totalAmount - paidAmount);
         const payment = await tx.payment.create({
             data: {
                 invoiceNumber, studentId: student.id, branchId,
@@ -204,14 +235,15 @@ const createStudent = async (data, adminBranchId) => {
                 status: 'ACTIVE'
             }
         });
-        // 3. Send Credentials Email with temp password so student can log in
-        const emailResult = await (0, email_1.sendCredentialsEmail)(student.email, student.name, studentId, tempPassword).catch(err => {
-            console.error('Email system crash:', err);
-            return { success: false, error: err.message };
-        });
         const { password: _, ...studentData } = student;
-        return { ...studentData, emailResult };
+        return studentData;
     });
+    // 3. Send Credentials Email with temp password so student can log in
+    const emailResult = await (0, email_1.sendCredentialsEmail)(transactionResult.email, transactionResult.name, transactionResult.studentId, tempPassword).catch(err => {
+        console.error('Email system crash:', err);
+        return { success: false, error: err.message };
+    });
+    return { ...transactionResult, emailResult };
 };
 exports.createStudent = createStudent;
 const updateStudent = async (id, branchId, data) => {
@@ -265,34 +297,36 @@ const updateStudent = async (id, branchId, data) => {
             // Recalculate amounts if package or discount changes
             const newPackageType = data.packageType || existingStudent.packageType;
             const newDiscount = data.discount !== undefined ? data.discount : existingStudent.discount;
-            if (data.packageType || data.discount !== undefined) {
-                const packageInfo = await getPackageDetails(newPackageType, tx);
-                paymentUpdate.amount = packageInfo.price;
-                paymentUpdate.discount = newDiscount;
-                paymentUpdate.totalAmount = packageInfo.price - newDiscount;
-                // Adjust pending amount based on status
-                const currentStatus = data.paymentStatus || lastPayment.status;
-                if (currentStatus === 'PAID') {
-                    paymentUpdate.paidAmount = paymentUpdate.totalAmount;
-                    paymentUpdate.pendingAmount = 0;
+            if (data.packageType || data.discount !== undefined || data.paymentStatus || data.paidAmount !== undefined) {
+                if (data.packageType || data.discount !== undefined) {
+                    const packageInfo = await getPackageDetails(newPackageType, existingStudent.branchId, tx);
+                    const subTotal = Math.max(0, packageInfo.price - newDiscount);
+                    const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+                    paymentUpdate.amount = packageInfo.price;
+                    paymentUpdate.discount = newDiscount;
+                    paymentUpdate.totalAmount = subTotal + vatAmount;
                 }
-                else {
-                    // Keep existing paid amount, recalculate pending
-                    paymentUpdate.pendingAmount = Math.max(0, paymentUpdate.totalAmount - lastPayment.paidAmount);
-                    if (paymentUpdate.pendingAmount === 0 && lastPayment.paidAmount > 0) {
-                        paymentUpdate.status = 'PAID';
-                    }
+                const currentTotal = paymentUpdate.totalAmount !== undefined ? paymentUpdate.totalAmount : lastPayment.totalAmount;
+                const currentPaid = data.paidAmount !== undefined ? data.paidAmount : lastPayment.paidAmount;
+                const newStatus = data.paymentStatus || lastPayment.status;
+                let finalStatus = newStatus;
+                let finalPaid = currentPaid;
+                if (newStatus === 'PAID') {
+                    finalPaid = currentTotal;
                 }
-            }
-            if (data.paymentStatus && lastPayment.status !== data.paymentStatus) {
-                const isPaid = data.paymentStatus === 'PAID';
-                paymentUpdate.status = data.paymentStatus;
-                // If force-marking as PAID, update amounts
-                if (isPaid) {
-                    const finalTotal = paymentUpdate.totalAmount || lastPayment.totalAmount;
-                    paymentUpdate.paidAmount = finalTotal;
-                    paymentUpdate.pendingAmount = 0;
+                else if (newStatus === 'PENDING') {
+                    finalPaid = 0;
                 }
+                const finalPending = Math.max(0, currentTotal - finalPaid);
+                if (finalStatus === 'PARTIAL' && finalPending === 0 && finalPaid > 0) {
+                    finalStatus = 'PAID';
+                }
+                if (finalStatus !== lastPayment.status)
+                    paymentUpdate.status = finalStatus;
+                if (finalPaid !== lastPayment.paidAmount)
+                    paymentUpdate.paidAmount = finalPaid;
+                if (finalPending !== lastPayment.pendingAmount)
+                    paymentUpdate.pendingAmount = finalPending;
             }
             if (data.packageType && lastPayment.packageType !== data.packageType) {
                 paymentUpdate.packageType = data.packageType;
@@ -309,7 +343,7 @@ const updateStudent = async (id, branchId, data) => {
         }
         // ── Update MembershipHistory when packageType changes ──────────────
         if (data.packageType && data.packageType !== existingStudent.packageType) {
-            const newPkgInfo = await getPackageDetails(data.packageType, tx);
+            const newPkgInfo = await getPackageDetails(data.packageType, existingStudent.branchId, tx);
             // Find the latest membership record for this student (any status) and update totalClasses
             const latestMembership = await tx.membershipHistory.findFirst({
                 where: { studentId: id },
@@ -357,9 +391,12 @@ const renewStudent = async (id, branchId, data) => {
     return await database_1.prisma.$transaction(async (tx) => {
         const student = await tx.student.findFirstOrThrow({ where: { ...where } });
         const branch = await tx.branch.findUniqueOrThrow({ where: { id: student.branchId } });
-        const packageInfo = await getPackageDetails(data.packageType, tx);
+        const packageInfo = await getPackageDetails(data.packageType, student.branchId, tx);
         const amount = packageInfo.price;
-        const totalAmount = amount - (data.discount || 0);
+        const discountAmount = data.discount || 0;
+        const subTotal = Math.max(0, amount - discountAmount);
+        const vatAmount = data.vatAmount !== undefined ? data.vatAmount : parseFloat((subTotal * 0.05).toFixed(2));
+        const totalAmount = subTotal + vatAmount;
         const startDate = new Date(); // Could append to existing expiryDate instead
         const expiryDate = new Date();
         expiryDate.setMonth(expiryDate.getMonth() + (packageInfo.durationMonths || 1));
@@ -376,9 +413,14 @@ const renewStudent = async (id, branchId, data) => {
         // Generate Payment
         const paymentCount = await tx.payment.count({ where: { branchId: student.branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } } });
         const invoiceNumber = (0, generateId_1.generateInvoiceNumber)(branch.code, paymentCount + 1);
-        const isPaid = data.paymentStatus === 'PAID';
-        const paidAmount = isPaid ? totalAmount : 0;
-        const pendingAmount = isPaid ? 0 : totalAmount;
+        let paidAmount = 0;
+        if (data.paymentStatus === 'PAID') {
+            paidAmount = totalAmount;
+        }
+        else if (data.paymentStatus === 'PARTIAL' && data.paidAmount !== undefined) {
+            paidAmount = data.paidAmount;
+        }
+        const pendingAmount = Math.max(0, totalAmount - paidAmount);
         await tx.payment.create({
             data: {
                 invoiceNumber, studentId: student.id, branchId: student.branchId,
@@ -489,6 +531,30 @@ exports.getStudentMembershipHistory = getStudentMembershipHistory;
 // - COMPLETED/EXPIRED history = students who expired and have since been renewed (permanent history)
 // - ACTIVE history for EXPIRED students = newly expired, not yet renewed (current expired screen)
 const getExpiredHistory = async (branchId) => {
+    // Soft update expired students dynamically (Date-based)
+    await database_1.prisma.student.updateMany({
+        where: {
+            status: 'ACTIVE',
+            membershipExpiryDate: { lt: new Date() }
+        },
+        data: { status: 'EXPIRED' }
+    });
+    // Soft update students who have used all their classes
+    const activeMemberships = await database_1.prisma.membershipHistory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
+    });
+    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
+    if (exhaustedIds.length > 0) {
+        await database_1.prisma.student.updateMany({
+            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'EXPIRED' }
+        });
+        await database_1.prisma.membershipHistory.updateMany({
+            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'COMPLETED' }
+        });
+    }
     const studentWhere = branchId ? { branchId } : {};
     return await database_1.prisma.membershipHistory.findMany({
         where: {

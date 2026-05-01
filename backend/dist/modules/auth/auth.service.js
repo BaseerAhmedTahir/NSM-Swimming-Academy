@@ -7,15 +7,16 @@ exports.resetPassword = exports.forgotPassword = exports.logout = exports.refres
 const database_1 = require("../../config/database");
 const errors_1 = require("../../utils/errors");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const uuid_1 = require("uuid");
+const crypto_1 = require("crypto");
 const jwt_1 = require("../../utils/jwt");
 const generateId_1 = require("../../utils/generateId");
 const email_1 = require("../../utils/email");
 // Default password reset expiry is 1 hour
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 const adminLogin = async (data) => {
+    const trimmedUsername = data.username?.trim().toLowerCase();
     const admin = await database_1.prisma.admin.findUnique({
-        where: { username: data.username },
+        where: { username: trimmedUsername },
         include: { branch: true }
     });
     if (!admin || !admin.isActive) {
@@ -161,7 +162,7 @@ const forgotPassword = async (email) => {
         // Obscure whether email exists or not to prevent enumeration
         return;
     }
-    const resetToken = (0, uuid_1.v4)();
+    const resetToken = (0, crypto_1.randomUUID)();
     const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
     await database_1.prisma.passwordResetToken.create({
         data: { email, token: resetToken, expiresAt }

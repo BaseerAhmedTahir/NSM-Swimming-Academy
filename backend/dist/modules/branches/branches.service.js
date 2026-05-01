@@ -54,32 +54,51 @@ const upsertBranchAdmin = async (branchId, data) => {
     // Verify branch exists
     await database_1.prisma.branch.findUniqueOrThrow({ where: { id: branchId } });
     const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
-    // Look for existing admin for this branch
-    const existingAdmin = await database_1.prisma.admin.findFirst({
-        where: { branchId, role: 'STAFF' }
+    const cleanedUsername = data.username?.trim().toLowerCase();
+    const cleanedEmail = data.email?.trim().toLowerCase();
+    // Use a transaction to ensure atomicity
+    return await database_1.prisma.$transaction(async (tx) => {
+        // 1. Look for any existing staff admin for this branch
+        const existingAdmins = await tx.admin.findMany({
+            where: { branchId, role: 'STAFF' },
+            orderBy: { createdAt: 'asc' }
+        });
+        let primaryAdmin;
+        if (existingAdmins.length > 0) {
+            // Update the oldest one as the primary
+            primaryAdmin = await tx.admin.update({
+                where: { id: existingAdmins[0].id },
+                data: {
+                    name: data.name,
+                    username: cleanedUsername,
+                    email: cleanedEmail,
+                    password: hashedPassword,
+                    isActive: true
+                }
+            });
+            // 2. Delete ALL OTHER staff admins for this branch to prevent "old credentials" working
+            if (existingAdmins.length > 1) {
+                const otherIds = existingAdmins.slice(1).map(a => a.id);
+                await tx.admin.deleteMany({
+                    where: { id: { in: otherIds } }
+                });
+            }
+        }
+        else {
+            // Create new one if none exist
+            primaryAdmin = await tx.admin.create({
+                data: {
+                    name: data.name,
+                    username: cleanedUsername,
+                    email: cleanedEmail,
+                    password: hashedPassword,
+                    role: 'STAFF',
+                    branchId,
+                    isActive: true
+                }
+            });
+        }
+        return primaryAdmin;
     });
-    if (existingAdmin) {
-        return await database_1.prisma.admin.update({
-            where: { id: existingAdmin.id },
-            data: {
-                name: data.name,
-                username: data.username,
-                email: data.email,
-                password: hashedPassword
-            }
-        });
-    }
-    else {
-        return await database_1.prisma.admin.create({
-            data: {
-                name: data.name,
-                username: data.username,
-                email: data.email,
-                password: hashedPassword,
-                role: 'STAFF',
-                branchId
-            }
-        });
-    }
 };
 exports.upsertBranchAdmin = upsertBranchAdmin;
