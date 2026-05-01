@@ -110,6 +110,31 @@ export const sendCredentialsEmail = async (to: string, studentName: string, stud
             <p style="color: #d97706; font-weight: bold;">⚠️ Please keep your password safe. You can use it to log in to the NSM Swimming Academy mobile app.</p>
             <p>Use your <strong>email address</strong> and the password above to log in. Your branch and schedule will be assigned automatically.</p>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; font-size: 13px; color: #475569; border: 1px solid #e2e8f0;">
+                <h3 style="color: #0B213F; margin-top: 0; font-size: 16px;">NSM Swimming Pool Rules & Policies</h3>
+                <ul style="padding-left: 20px; margin-bottom: 20px; line-height: 1.5;">
+                    <li>No running or pushing around the pool area.</li>
+                    <li>Do not enter the pool without the coach’s permission.</li>
+                    <li>Proper swimwear is required at all times.</li>
+                    <li>Swimming cap and goggles are compulsory.</li>
+                    <li>Do not enter the pool if you have any skin infection or illness. Please consult a doctor first. NSM will not be responsible in such cases.</li>
+                    <li>Inside the water, students are our responsibility. Outside the pool, parents/guardians are responsible for their child’s safety. NSM will not be responsible for any incidents outside the pool.</li>
+                    <li>Please arrive 10 minutes before your class. Late arrivals may miss their session.</li>
+                    <li>Inform at least 12 hours in advance if you are unable to attend. Late notice or no-show will be counted as a class.</li>
+                    <li>Avoid interrupting the class during sessions.</li>
+                    <li>Keep valuables at home. Management is not responsible for any loss or damage.</li>
+                    <li>Respect coaches, staff, and fellow swimmers at all times.</li>
+                </ul>
+                <h4 style="color: #0B213F; margin-bottom: 10px; font-size: 14px;">Membership Policies</h4>
+                <ul style="padding-left: 20px; margin-bottom: 0; line-height: 1.5;">
+                    <li><strong>No Refund Policy</strong></li>
+                    <li>Extension of the Membership for 7/15/30 days will be charged 30/60/120 AED</li>
+                    <li>Absent Class should be rescheduled within the activation time period of membership</li>
+                    <li>Group class will be 4-5 people</li>
+                    <li>All Prices are for Group class</li>
+                    <li>All prices are exclusive of 5% VAT</li>
+                </ul>
+            </div>
             <p style="font-size: 12px; color: #64748b;">Best Regards,<br>NSM Swimming Academy Team</p>
         </div>
     `;
@@ -128,6 +153,31 @@ export const sendWelcomeEmail = async (to: string, studentName: string, studentI
             </div>
             <p>Use this ID to check your schedule and track your progress in our mobile app.</p>
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; font-size: 13px; color: #475569; border: 1px solid #e2e8f0;">
+                <h3 style="color: #0B213F; margin-top: 0; font-size: 16px;">NSM Swimming Pool Rules & Policies</h3>
+                <ul style="padding-left: 20px; margin-bottom: 20px; line-height: 1.5;">
+                    <li>No running or pushing around the pool area.</li>
+                    <li>Do not enter the pool without the coach’s permission.</li>
+                    <li>Proper swimwear is required at all times.</li>
+                    <li>Swimming cap and goggles are compulsory.</li>
+                    <li>Do not enter the pool if you have any skin infection or illness. Please consult a doctor first. NSM will not be responsible in such cases.</li>
+                    <li>Inside the water, students are our responsibility. Outside the pool, parents/guardians are responsible for their child’s safety. NSM will not be responsible for any incidents outside the pool.</li>
+                    <li>Please arrive 10 minutes before your class. Late arrivals may miss their session.</li>
+                    <li>Inform at least 12 hours in advance if you are unable to attend. Late notice or no-show will be counted as a class.</li>
+                    <li>Avoid interrupting the class during sessions.</li>
+                    <li>Keep valuables at home. Management is not responsible for any loss or damage.</li>
+                    <li>Respect coaches, staff, and fellow swimmers at all times.</li>
+                </ul>
+                <h4 style="color: #0B213F; margin-bottom: 10px; font-size: 14px;">Membership Policies</h4>
+                <ul style="padding-left: 20px; margin-bottom: 0; line-height: 1.5;">
+                    <li><strong>No Refund Policy</strong></li>
+                    <li>Extension of the Membership for 7/15/30 days will be charged 30/60/120 AED</li>
+                    <li>Absent Class should be rescheduled within the activation time period of membership</li>
+                    <li>Group class will be 4-5 people</li>
+                    <li>All Prices are for Group class</li>
+                    <li>All prices are exclusive of 5% VAT</li>
+                </ul>
+            </div>
             <p style="font-size: 12px; color: #64748b;">Best Regards,<br>NSM Swimming Academy Team</p>
         </div>
     `;
