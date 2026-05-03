@@ -11,7 +11,8 @@ export const renewStudentSchema = z.object({
     packageType: z.string(), // Accepts dynamic package keys from Settings
     discount: z.number().min(0).optional().default(0),
     paymentMode: z.enum(['CASH', 'CARD', 'ONLINE']),
-    paymentStatus: z.enum(['PAID', 'PENDING']).default('PAID'),
+    paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).default('PAID'),
+    paidAmount: z.coerce.number().min(0).optional(),
     isInstallment: z.boolean().default(false),
   })
 });

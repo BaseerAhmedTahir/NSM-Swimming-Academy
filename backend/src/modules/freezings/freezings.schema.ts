@@ -22,6 +22,8 @@ export const updateFreezingSchema = z.object({
 
 export const unfreezeSchema = z.object({
   body: z.object({
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    comment: z.string().optional(),
+    newExpiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD format').optional()
   })
 });

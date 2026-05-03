@@ -121,11 +121,11 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 return {
                     ...prev,
                     packageType: isValid ? prev.packageType : pkgs[0].id,
-                    expiryDate: expiry.toISOString().split('T')[0]
+                    expiryDate: isEditMode ? prev.expiryDate : expiry.toISOString().split('T')[0]
                 };
             });
         }
-    }, [allSettings, formData.branchId, branches]);
+    }, [allSettings, formData.branchId, branches, isEditMode]);
 
     // Auto-recalculate expiry when package type or start date changes (add mode only)
     useEffect(() => {
@@ -533,11 +533,12 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                             <Input
                                                 className="h-9 bg-orange-50 border-orange-200 focus-visible:ring-orange-400 rounded-xl text-sm font-medium shadow-sm"
                                                 type="number"
+                                                step="any"
                                                 placeholder="0.00"
                                                 min={0}
                                                 max={totalPrice}
-                                                value={formData.paidAmount || ""}
-                                                onChange={(e) => setFormData({...formData, paidAmount: parseFloat(e.target.value) || 0})}
+                                                value={formData.paidAmount === 0 ? '' : formData.paidAmount}
+                                                onChange={(e) => setFormData({...formData, paidAmount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                                             />
                                         </div>
                                     )}
@@ -546,9 +547,11 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                         <Label className="text-xs font-bold text-[#0B213F]">Discount (AED)</Label>
                                         <Input
                                             className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl text-muted-foreground"
-                                            type="number" placeholder="0"
-                                            value={formData.discount}
-                                            onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})}
+                                            type="number" 
+                                            step="any"
+                                            placeholder="0"
+                                            value={formData.discount === 0 ? '' : formData.discount}
+                                            onChange={(e) => setFormData({...formData, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                                         />
                                     </div>
                                 </div>

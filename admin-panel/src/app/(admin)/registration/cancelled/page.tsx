@@ -85,12 +85,18 @@ export default function CancelledStudentsPage() {
 
     useEffect(() => {
         if (!allSettings || allSettings.length === 0 || !selectedStudent) return;
-        const branchId = selectedStudent.branchId;
-        if (!branchId) return;
-
-        const branchPrefix = `_${branchId}`;
-        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
-        let packagesToUse = branchPackages;
+        
+        let branchPackages: any[] = [];
+        let packagesToUse: any[] = [];
+        let branchPrefix = '';
+        
+        const branchId = selectedStudent.branchId || selectedStudent.raw?.branchId;
+        
+        if (branchId) {
+            branchPrefix = `_${branchId}`;
+            branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+            packagesToUse = branchPackages;
+        }
 
         if (branchPackages.length === 0) {
             packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !s.key.includes('_' + branchId)); // Rough fallback
@@ -98,7 +104,7 @@ export default function CancelledStudentsPage() {
 
         const pkgs = packagesToUse.map((s:any) => {
             const parsed = JSON.parse(s.value);
-            let baseKey = s.key.replace(branchPrefix, '');
+            let baseKey = branchPrefix ? s.key.replace(branchPrefix, '') : s.key;
             return {
                 id: baseKey.replace('PACKAGE_', ''),
                 name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
@@ -139,6 +145,12 @@ export default function CancelledStudentsPage() {
         
         return matchesSearch;
     });
+
+    const selectedRenewPackageObj = dynamicPackages.find(p => p.id === renewData.packageType);
+    const renewBaseAmount = selectedRenewPackageObj ? Number(selectedRenewPackageObj.price) : 0;
+    const renewVatAmount = parseFloat((renewBaseAmount * 0.05).toFixed(2));
+    const renewTotalAmount = renewBaseAmount + renewVatAmount;
+    const renewPendingAmount = Math.max(0, renewTotalAmount - (renewData.paidAmount || 0));
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -282,15 +294,27 @@ export default function CancelledStudentsPage() {
                                 </Select>
                             </div>
                             {renewData.paymentStatus === 'PARTIAL' && (
-                                <div className="space-y-2">
-                                    <Label>Paid Amount (AED)</Label>
-                                    <Input 
-                                        type="number" 
-                                        min="0"
-                                        placeholder="Enter amount paid"
-                                        value={renewData.paidAmount || ''}
-                                        onChange={(e) => setRenewData({...renewData, paidAmount: parseFloat(e.target.value) || 0})}
-                                    />
+                                <div className="grid grid-cols-2 gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                                    <div className="space-y-2">
+                                        <Label className="text-muted-foreground">Total Package Amount</Label>
+                                        <p className="text-lg font-black text-foreground">AED {renewTotalAmount.toFixed(2)}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Paid Amount (AED)</Label>
+                                        <Input 
+                                            type="number" 
+                                            step="any"
+                                            min="0"
+                                            max={renewTotalAmount}
+                                            placeholder="Enter amount paid"
+                                            value={renewData.paidAmount === 0 ? '' : renewData.paidAmount}
+                                            onChange={(e) => setRenewData({...renewData, paidAmount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2 pt-2 border-t border-border/50">
+                                        <Label className="text-muted-foreground">Pending Balance</Label>
+                                        <p className="text-lg font-bold text-warning">AED {renewPendingAmount.toFixed(2)}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>

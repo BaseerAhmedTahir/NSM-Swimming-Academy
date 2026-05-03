@@ -116,8 +116,13 @@ export const unfreeze = async (id: string, branchId: string | undefined, unfreez
         });
 
         if (membership) {
-            const frozenDurationMs = new Date().getTime() - new Date(record.freezeStartDate).getTime();
-            const newExpiry = new Date(membership.expiryDate.getTime() + frozenDurationMs);
+            let newExpiry: Date;
+            if (unfreezeData.newExpiryDate) {
+                newExpiry = new Date(unfreezeData.newExpiryDate);
+            } else {
+                const frozenDurationMs = new Date().getTime() - new Date(record.freezeStartDate).getTime();
+                newExpiry = new Date(membership.expiryDate.getTime() + frozenDurationMs);
+            }
 
             await tx.membershipHistory.update({
                 where: { id: membership.id },

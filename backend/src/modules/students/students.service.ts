@@ -579,9 +579,29 @@ export const getStudentMembershipHistory = async (id: string, branchId?: string)
     const where = branchId ? { id, branchId } : { id };
     await prisma.student.findFirstOrThrow({ where });
 
-    return await prisma.membershipHistory.findMany({
+    const history = await prisma.membershipHistory.findMany({
         where: { studentId: id },
         orderBy: { createdAt: 'desc' },
+    });
+
+    const payments = await prisma.payment.findMany({
+        where: { studentId: id },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    return history.map(h => {
+        // Match payment created within 2 minutes of the membership history
+        const relatedPayment = payments.find(p => 
+            p.packageType === h.packageType &&
+            Math.abs(p.createdAt.getTime() - h.createdAt.getTime()) < 120000
+        );
+
+        return {
+            ...h,
+            paidAmount: relatedPayment ? relatedPayment.paidAmount : null,
+            totalAmount: relatedPayment ? relatedPayment.totalAmount : null,
+            paymentStatus: relatedPayment ? relatedPayment.status : null
+        };
     });
 };
 

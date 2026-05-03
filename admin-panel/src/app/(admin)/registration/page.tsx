@@ -169,12 +169,18 @@ export default function RegistrationPage() {
 
     useEffect(() => {
         if (!allSettings || allSettings.length === 0 || !selectedStudent) return;
+        
+        let branchPackages: any[] = [];
+        let packagesToUse: any[] = [];
+        let branchPrefix = '';
+        
         const branchId = selectedStudent.branchId || selectedStudent.raw?.branchId;
-        if (!branchId) return;
-
-        const branchPrefix = `_${branchId}`;
-        let branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
-        let packagesToUse = branchPackages;
+        
+        if (branchId) {
+            branchPrefix = `_${branchId}`;
+            branchPackages = allSettings.filter((s: any) => s.key.startsWith('PACKAGE_') && s.key.endsWith(branchPrefix));
+            packagesToUse = branchPackages;
+        }
 
         if (branchPackages.length === 0) {
             packagesToUse = allSettings.filter((s: any) => /^PACKAGE_[A-Z_]+$/.test(s.key) && !branches.some((b:any) => s.key.endsWith('_' + b.id)));
@@ -182,7 +188,7 @@ export default function RegistrationPage() {
 
         const pkgs = packagesToUse.map((s:any) => {
             const parsed = JSON.parse(s.value);
-            let baseKey = s.key.replace(branchPrefix, '');
+            let baseKey = branchPrefix ? s.key.replace(branchPrefix, '') : s.key;
             return {
                 id: baseKey.replace('PACKAGE_', ''),
                 name: baseKey.replace('PACKAGE_', '').charAt(0) + baseKey.replace('PACKAGE_', '').slice(1).toLowerCase() + " Package",
@@ -415,6 +421,11 @@ export default function RegistrationPage() {
             toast.error("Failed to export students", { id: "export-students" });
         }
     };
+    const selectedRenewPackageObj = dynamicPackages.find(p => p.id === renewData.packageType);
+    const renewBaseAmount = selectedRenewPackageObj ? Number(selectedRenewPackageObj.price) : 0;
+    const renewVatAmount = parseFloat((renewBaseAmount * 0.05).toFixed(2));
+    const renewTotalAmount = renewBaseAmount + renewVatAmount;
+    const renewPendingAmount = Math.max(0, renewTotalAmount - (renewData.paidAmount || 0));
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -919,7 +930,7 @@ export default function RegistrationPage() {
                                         {selectedStudent.status}
                                     </span>
                                 </div>
-                                <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {selectedStudent.branch}</DialogDescription>
+                                <DialogDescription className="font-bold text-[#1C5CAA] mt-1">{selectedStudent.id} • {selectedStudent.level} • {typeof selectedStudent.branch === 'object' ? selectedStudent.branch?.name : selectedStudent.branch}</DialogDescription>
                                 <Button variant="outline" size="sm" className="absolute top-14 right-4 rounded-xl font-bold bg-white" onClick={() => { setIsDetailModalOpen(false); handleOpenEdit(selectedStudent); }}>Edit</Button>
                             </div>
                             <div className="p-6 grid gap-4 bg-[#f8fafc]">
@@ -979,20 +990,36 @@ export default function RegistrationPage() {
                                     <div className="space-y-3">
                                         {membershipHistory.length > 0 ? (
                                             membershipHistory.map((pkg, idx) => (
-                                                <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-bold text-[#0B213F] text-sm">{pkg.packageType} Package</p>
-                                                        <p className="text-[10px] font-bold text-slate-500">
-                                                            Started: {new Date(pkg.startDate).toLocaleDateString()}
-                                                        </p>
+                                                <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="font-bold text-[#0B213F] text-sm">{pkg.packageType} Package</p>
+                                                            <p className="text-[10px] font-bold text-slate-500">
+                                                                Started: {new Date(pkg.startDate).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
+                                                            <span className={cn(
+                                                                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
+                                                                pkg.status === 'ACTIVE' ? "bg-success/10 text-success" : "bg-slate-100 text-slate-500"
+                                                            )}>{pkg.status}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
-                                                        <span className={cn(
-                                                            "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
-                                                            pkg.status === 'ACTIVE' ? "bg-success/10 text-success" : "bg-slate-100 text-slate-500"
-                                                        )}>{pkg.status}</span>
-                                                    </div>
+                                                    {pkg.totalAmount != null && (
+                                                        <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-100">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn(
+                                                                    "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase",
+                                                                    pkg.paymentStatus === 'PAID' ? "bg-success/10 text-success" : (pkg.paymentStatus === 'PARTIAL' ? "bg-blue-500/10 text-blue-500" : "bg-warning/10 text-warning")
+                                                                )}>
+                                                                    {pkg.paymentStatus || 'UNKNOWN'}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-slate-600">AED {pkg.paidAmount} Paid</span>
+                                                            </div>
+                                                            <span className="text-xs font-black text-[#0B213F]">Total: AED {pkg.totalAmount}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         ) : (
@@ -1067,15 +1094,27 @@ export default function RegistrationPage() {
                                 </Select>
                             </div>
                             {renewData.paymentStatus === 'PARTIAL' && (
-                                <div className="space-y-2">
-                                    <Label>Paid Amount (AED)</Label>
-                                    <Input 
-                                        type="number" 
-                                        min="0"
-                                        placeholder="Enter amount paid"
-                                        value={renewData.paidAmount || ''}
-                                        onChange={(e) => setRenewData({...renewData, paidAmount: parseFloat(e.target.value) || 0})}
-                                    />
+                                <div className="grid grid-cols-2 gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                                    <div className="space-y-2">
+                                        <Label className="text-muted-foreground">Total Package Amount</Label>
+                                        <p className="text-lg font-black text-foreground">AED {renewTotalAmount.toFixed(2)}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Paid Amount (AED)</Label>
+                                        <Input 
+                                            type="number" 
+                                            step="any"
+                                            min="0"
+                                            max={renewTotalAmount}
+                                            placeholder="Enter amount paid"
+                                            value={renewData.paidAmount === 0 ? '' : renewData.paidAmount}
+                                            onChange={(e) => setRenewData({...renewData, paidAmount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2 pt-2 border-t border-border/50">
+                                        <Label className="text-muted-foreground">Pending Balance</Label>
+                                        <p className="text-lg font-bold text-warning">AED {renewPendingAmount.toFixed(2)}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>

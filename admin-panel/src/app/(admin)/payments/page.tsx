@@ -596,8 +596,9 @@ export default function PaymentsPage() {
                                         <Label>Paid Amount Today (AED)</Label>
                                         <Input 
                                             type="number" 
-                                            value={formData.paidAmount} 
-                                            onChange={(e) => setFormData({...formData, paidAmount: Number(e.target.value)})} 
+                                            step="any"
+                                            value={formData.paidAmount === 0 ? '' : formData.paidAmount} 
+                                            onChange={(e) => setFormData({...formData, paidAmount: e.target.value === '' ? 0 : parseFloat(e.target.value)})} 
                                             className="bg-card font-bold text-primary" 
                                             autoFocus
                                         />
@@ -606,8 +607,9 @@ export default function PaymentsPage() {
                                         <Label>Discount Applied (AED)</Label>
                                         <Input 
                                             type="number" 
-                                            value={formData.discount} 
-                                            onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})} 
+                                            step="any"
+                                            value={formData.discount === 0 ? '' : formData.discount} 
+                                            onChange={(e) => setFormData({...formData, discount: e.target.value === '' ? 0 : parseFloat(e.target.value)})} 
                                             className="bg-card" 
                                         />
                                     </div>
