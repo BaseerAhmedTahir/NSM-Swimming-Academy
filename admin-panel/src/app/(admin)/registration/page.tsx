@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useEffect } from "react";
 import AddStudentModal from "@/components/students/AddStudentModal";
+import StudentDetailModal from "@/components/students/StudentDetailModal";
 import { useAuth } from "@/context/AuthContext";
 
 export default function RegistrationPage() {
@@ -238,17 +239,8 @@ export default function RegistrationPage() {
     };
 
     const handleOpenStudentDetails = async (student: any) => {
-        // Ensure we are using the mapped student object (which has branch as string)
-        // for the UI state, but use the raw.id for the API call.
-        const studentToUse = student.raw || student;
-        setSelectedStudent(student); 
+        setSelectedStudent(student);
         setIsDetailModalOpen(true);
-        try {
-            const res = await api.get(`/students/${studentToUse.id}/membership-history`);
-            if (res.data.success) {
-                setMembershipHistory(res.data.data);
-            }
-        } catch (err) { console.error(err); }
     };
 
     const handleOpenDelete = (student: any) => {
@@ -969,6 +961,15 @@ export default function RegistrationPage() {
             </Dialog>
 
             {/* 4.6.5 Student Profil View placeholder (re-using profile from schedule or simpler dialog) */}
+            {/* 4.6.5 Student Profile View Component */}
+            <StudentDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                student={selectedStudent}
+                onEditSuccess={fetchStudents}
+            />
+
+{/* 
             <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
                 <DialogContent className="sm:max-w-[500px] max-h-[88vh] overflow-y-auto p-0 border-border/50 rounded-3xl select-none">
                     <DialogTitle className="sr-only">Student Details</DialogTitle>
@@ -1163,6 +1164,7 @@ export default function RegistrationPage() {
                     )}
                 </DialogContent>
             </Dialog>
+*/}
 
             {/* --- RENEW MEMBERSHIP MODAL --- */}
             <Dialog open={isRenewModalOpen} onOpenChange={setIsRenewModalOpen}>

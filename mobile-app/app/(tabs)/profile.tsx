@@ -369,8 +369,17 @@ export default function ProfileScreen() {
                         </GlassCard>
                     </View>
 
-                    {/* Section: Settings/Actions */}
-                    <View style={styles.section}>
+                        <TouchableOpacity
+                            style={styles.actionItem}
+                            onPress={() => router.push('/policies')}
+                        >
+                            <GlassCard style={styles.actionCard}>
+                                <Ionicons name="document-text-outline" size={22} color={theme.colors.primary} />
+                                <Text style={[styles.actionText, { color: theme.colors.primary }]}>Academy Policies</Text>
+                                <Ionicons name="chevron-forward" size={20} color={theme.colors.primary} />
+                            </GlassCard>
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             style={styles.actionItem}
                             onPress={handleLogout}

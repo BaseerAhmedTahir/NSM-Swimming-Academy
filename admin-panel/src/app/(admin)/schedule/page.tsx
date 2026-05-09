@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import StudentDetailModal from "@/components/students/StudentDetailModal";
 
 export default function SchedulePage() {
     const { user } = useAuth();
@@ -62,6 +63,7 @@ export default function SchedulePage() {
 
     // UI State 
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    const [selectedSlotData, setSelectedSlotData] = useState<any>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -69,7 +71,6 @@ export default function SchedulePage() {
     const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [freezeComment, setFreezeComment] = useState("");
-    const [selectedSlotData, setSelectedSlotData] = useState<any>(null);
     const [studentToAdd, setStudentToAdd] = useState("");
     const [coachesList, setCoachesList] = useState<any[]>([]);
     const [membershipHistory, setMembershipHistory] = useState<any[]>([]);
@@ -183,7 +184,8 @@ export default function SchedulePage() {
                 const s = res.data.data;
                 const latestPayment = s.payments?.[0];
                 const mapped = {
-                    id: s.studentId,
+                    id: s.id,
+                    studentId: s.studentId,
                     name: s.name,
                     displayName: s.name,
                     phone: s.phone,
@@ -200,25 +202,27 @@ export default function SchedulePage() {
                     fee: {
                         status: latestPayment?.status === 'PAID' ? 'Paid' : 'Pending',
                         amount: latestPayment?.totalAmount || 0
-                    }
+                    },
+                    raw: s
                 };
 
-                // Fetch real attendance count and history
-                const [attRes, histRes] = await Promise.all([
-                    api.get(`/students/${s.id}/attendance`),
-                    api.get(`/students/${s.id}/membership-history`)
-                ]);
-
+                // Fetch real attendance count
+                const attRes = await api.get(`/students/${s.id}/attendance`);
                 if (attRes.data.success) {
                     mapped.attendance.attended = attRes.data.data.filter((r: any) => r.status === 'ATTENDED').length;
                 }
-                
-                if (histRes.data.success) {
-                    setMembershipHistory(histRes.data.data);
-                    const activeHist = histRes.data.data.find((h: any) => h.status === 'ACTIVE');
-                    if (activeHist) {
-                        mapped.attendance.totalClasses = activeHist.totalClasses;
+
+                // Try to grab the latest total classes from membership packages if we can
+                try {
+                    const histRes = await api.get(`/students/${s.id}/membership-history`);
+                    if (histRes.data.success) {
+                        const activeHist = histRes.data.data.find((h: any) => h.status === 'ACTIVE');
+                        if (activeHist) {
+                            mapped.attendance.totalClasses = activeHist.totalClasses;
+                        }
                     }
+                } catch (err) {
+                    console.error("Could not fetch membership history for total classes", err);
                 }
 
                 setSelectedStudent(mapped);
@@ -500,6 +504,14 @@ export default function SchedulePage() {
             {/* Modals */}
 
             {/* 4.5.8 Student Detail Modal */}
+            <StudentDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                student={selectedStudent}
+                onEditSuccess={() => fetchSchedule(dateStr)}
+            />
+
+{/* 
             <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-border/50 rounded-3xl">
                     <DialogTitle className="sr-only">Student Details</DialogTitle>
@@ -595,6 +607,7 @@ export default function SchedulePage() {
                     )}
                 </DialogContent>
             </Dialog>
+*/}
 
             {/* 4.5.7 Notification Modal */}
             <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
