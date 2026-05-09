@@ -72,12 +72,12 @@ export const getAllStudents = async (queryArgs: any, branchId?: string) => {
         data: { status: 'EXPIRED' }
     });
 
-    // Soft update students who have used all their classes
+    // Soft update students who have used all their classes (accounting for freeClasses)
     const activeMemberships = await prisma.membershipHistory.findMany({
         where: { status: 'ACTIVE' },
-        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true, freeClasses: true }
     });
-    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
+    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= (m.totalClasses + (m.freeClasses || 0))).map(m => m.studentId);
     if (exhaustedIds.length > 0) {
         await prisma.student.updateMany({
             where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
@@ -121,7 +121,7 @@ export const getAllStudents = async (queryArgs: any, branchId?: string) => {
                 membershipHistory: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    select: { totalClasses: true, classesUsed: true, status: true }
+                    select: { totalClasses: true, classesUsed: true, freeClasses: true, status: true }
                 },
                 createdAt: true
             }
@@ -247,6 +247,7 @@ export const createStudent = async (data: any, adminBranchId: string) => {
             data: {
                 studentId: student.id, packageType: data.packageType,
                 startDate, expiryDate, totalClasses: packageInfo.classes,
+                freeClasses: data.freeClasses || 0,
                 status: 'ACTIVE'
             }
         });
@@ -376,10 +377,17 @@ export const updateStudent = async (id: string, branchId: string | undefined, da
             }
         }
 
-        // ── Update MembershipHistory when packageType changes ──────────────
+        // ── Update MembershipHistory when packageType or freeClasses changes ──────────────
+        const membershipUpdateData: any = {};
         if (data.packageType && data.packageType !== existingStudent.packageType) {
             const newPkgInfo = await getPackageDetails(data.packageType, existingStudent.branchId, tx);
-            // Find the latest membership record for this student (any status) and update totalClasses
+            membershipUpdateData.packageType = data.packageType;
+            membershipUpdateData.totalClasses = newPkgInfo.classes;
+        }
+        if (data.freeClasses !== undefined) {
+            membershipUpdateData.freeClasses = data.freeClasses;
+        }
+        if (Object.keys(membershipUpdateData).length > 0) {
             const latestMembership = await tx.membershipHistory.findFirst({
                 where: { studentId: id },
                 orderBy: { createdAt: 'desc' },
@@ -388,10 +396,7 @@ export const updateStudent = async (id: string, branchId: string | undefined, da
             if (latestMembership) {
                 await tx.membershipHistory.update({
                     where: { id: latestMembership.id },
-                    data: {
-                        packageType: data.packageType,
-                        totalClasses: newPkgInfo.classes,
-                    }
+                    data: membershipUpdateData
                 });
             }
         }
@@ -487,6 +492,7 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
             data: {
                 studentId: student.id, packageType: data.packageType,
                 startDate, expiryDate, totalClasses: packageInfo.classes,
+                freeClasses: data.freeClasses || 0,
                 status: 'ACTIVE'
             }
         });
@@ -587,6 +593,21 @@ export const getStudentMembershipHistory = async (id: string, branchId?: string)
     const payments = await prisma.payment.findMany({
         where: { studentId: id },
         orderBy: { createdAt: 'desc' },
+        include: { installments: { orderBy: { createdAt: 'desc' } } }
+    });
+
+    // Get attendance records for the student
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+        where: { studentId: id },
+        select: { date: true, status: true },
+        orderBy: { date: 'desc' }
+    });
+
+    // Get coach assignments
+    const coachAssignments = await prisma.coachStudentAssignment.findMany({
+        where: { studentId: id },
+        include: { coach: { select: { id: true, name: true, coachId: true } } },
+        orderBy: { assignedAt: 'desc' }
     });
 
     return history.map(h => {
@@ -596,11 +617,37 @@ export const getStudentMembershipHistory = async (id: string, branchId?: string)
             Math.abs(p.createdAt.getTime() - h.createdAt.getTime()) < 120000
         );
 
+        // Count attendance within this membership period
+        const periodAttendance = attendanceRecords.filter(a => {
+            const aDate = new Date(a.date);
+            return aDate >= new Date(h.startDate) && aDate <= new Date(h.expiryDate);
+        });
+        const attendedCount = periodAttendance.filter(a => a.status === 'ATTENDED').length;
+        const absentCount = periodAttendance.filter(a => a.status === 'ABSENT' || a.status === 'INFORMED').length;
+
         return {
             ...h,
+            // Payment details
             paidAmount: relatedPayment ? relatedPayment.paidAmount : null,
             totalAmount: relatedPayment ? relatedPayment.totalAmount : null,
-            paymentStatus: relatedPayment ? relatedPayment.status : null
+            pendingAmount: relatedPayment ? relatedPayment.pendingAmount : null,
+            paymentStatus: relatedPayment ? relatedPayment.status : null,
+            paymentMode: relatedPayment ? relatedPayment.paymentMode : null,
+            discount: relatedPayment ? relatedPayment.discount : null,
+            paymentDate: relatedPayment ? relatedPayment.paymentDate : null,
+            invoiceNumber: relatedPayment ? relatedPayment.invoiceNumber : null,
+            paymentId: relatedPayment ? relatedPayment.id : null,
+            installments: relatedPayment ? relatedPayment.installments : [],
+            // Attendance summary
+            attendedClasses: attendedCount,
+            absentClasses: absentCount,
+            // Coach info
+            coaches: coachAssignments.map(ca => ({
+                id: ca.coach.id,
+                name: ca.coach.name,
+                coachId: ca.coach.coachId,
+                assignedAt: ca.assignedAt
+            }))
         };
     });
 };

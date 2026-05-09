@@ -37,6 +37,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         email: "",
         phone: "+971 ",
         discount: 0,
+        freeClasses: 0,
         gender: "MALE",
         category: "KID",
         branchId: "",
@@ -47,7 +48,9 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         paidAmount: 0,
         startDate: new Date().toISOString().split('T')[0],
         expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
-        trn: ""
+        trn: "",
+        reminderDate: "",
+        reminderNotes: ""
     });
 
     // Financial calculations
@@ -150,6 +153,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 email: initialData.email || "",
                 phone: initialData.phone || "+971 ",
                 discount: initialData.discount || 0,
+                freeClasses: initialData.freeClasses || 0,
                 gender: initialData.gender || "MALE",
                 category: initialData.category || "KID",
                 branchId: initialData.branchId || "",
@@ -160,7 +164,9 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 paidAmount: initialData.paidAmount ?? 0,
                 startDate: initialData.membershipStartDate ? new Date(initialData.membershipStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                 expiryDate: initialData.membershipExpiryDate ? new Date(initialData.membershipExpiryDate).toISOString().split('T')[0] : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
-                trn: initialData.trn || ""
+                trn: initialData.trn || "",
+                reminderDate: "",
+                reminderNotes: ""
             });
             if (isCustom) setCustomLevelText(level);
         } else if (!isEditMode) {
@@ -171,6 +177,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 email: "",
                 phone: "+971 ",
                 discount: 0,
+                freeClasses: 0,
                 gender: "MALE",
                 category: "KID",
                 branchId: user?.role === 'STAFF' && user?.branchId ? user.branchId : branches[0]?.id || '',
@@ -181,7 +188,9 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 paidAmount: 0,
                 startDate: new Date().toISOString().split('T')[0],
                 expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
-                trn: ""
+                trn: "",
+                reminderDate: "",
+                reminderNotes: ""
             });
         }
     }, [initialData, isEditMode, isOpen, branches]);
@@ -224,6 +233,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 level: finalLevel,
                 category: formData.category,
                 discount: formData.discount,
+                freeClasses: formData.freeClasses,
                 branchId: formData.branchId,
                 paymentStatus: formData.paymentStatus,
                 trn: formData.trn,
@@ -258,6 +268,21 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                     : `Student added, but email failed: ${res.data.data.emailResult?.error || 'Unknown error'}`;
                 toast.success(`Student added! ${emailStatus}`);
             }
+
+            if (formData.reminderDate) {
+                try {
+                    await api.post('/reminders', {
+                        title: formData.reminderNotes || `Partial payment balance for ${formData.name}`,
+                        dueDate: new Date(formData.reminderDate).toISOString(),
+                        description: `Balance collection of AED ${(totalPrice - formData.paidAmount).toFixed(2)} for ${formData.name}`,
+                        type: 'PAYMENT_OVERDUE',
+                        priority: 'HIGH'
+                    });
+                } catch (remErr) {
+                    console.error("Failed to create reminder", remErr);
+                }
+            }
+
             if (onSuccess) onSuccess();
             onClose();
         } catch (err: any) {
@@ -276,7 +301,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[1000px] p-0 border-none shadow-2xl overflow-visible bg-[#f8fafc] rounded-3xl">
+            <DialogContent className="sm:max-w-[1000px] max-h-[88vh] overflow-y-auto p-0 border-none shadow-2xl bg-[#f8fafc] rounded-3xl">
                 <form onSubmit={handleSubmit}>
                     {/* Header */}
                     <div className="bg-white px-6 py-4 rounded-t-3xl flex items-center gap-4">
@@ -501,6 +526,23 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    {/* Free/Bonus Classes */}
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-bold text-[#0B213F]">Free/Bonus Classes</Label>
+                                        <Input
+                                            className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl"
+                                            type="number"
+                                            min={0}
+                                            placeholder="0"
+                                            value={formData.freeClasses === 0 ? '' : formData.freeClasses}
+                                            onChange={(e) => setFormData({...formData, freeClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                                        />
+                                        {formData.freeClasses > 0 && activeItem && (
+                                            <p className="text-[10px] font-bold text-emerald-600 mt-0.5">
+                                                Total classes: {activeItem.classes} + {formData.freeClasses} free = {activeItem.classes + formData.freeClasses}
+                                            </p>
+                                        )}
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Payment Method</Label>
@@ -540,6 +582,33 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                                 value={formData.paidAmount === 0 ? '' : formData.paidAmount}
                                                 onChange={(e) => setFormData({...formData, paidAmount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                                             />
+                                        </div>
+                                    )}
+
+                                    {/* Reminder for balance collection */}
+                                    {(formData.paymentStatus === 'PARTIAL' || formData.paymentStatus === 'PENDING') && (
+                                        <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-dashed border-slate-200 mt-1">
+                                            <p className="text-xs font-bold text-[#0B213F]">Balance Payment Reminder</p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-slate-500">Reminder Date</Label>
+                                                    <Input
+                                                        className="h-8 bg-white border-[#B2C5E0] text-xs font-medium rounded-lg"
+                                                        type="date"
+                                                        value={formData.reminderDate || ""}
+                                                        onChange={(e) => setFormData({...formData, reminderDate: e.target.value})}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-slate-500">Notes / Title</Label>
+                                                    <Input
+                                                        className="h-8 bg-white border-[#B2C5E0] text-xs font-medium rounded-lg"
+                                                        placeholder="Collect balance"
+                                                        value={formData.reminderNotes || ""}
+                                                        onChange={(e) => setFormData({...formData, reminderNotes: e.target.value})}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 

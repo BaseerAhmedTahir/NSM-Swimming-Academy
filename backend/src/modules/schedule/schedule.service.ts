@@ -52,8 +52,9 @@ export const assignSlot = async (data: any, branchId: string) => {
             }
         });
 
-        if (activeMembership.classesUsed + futureSlots >= activeMembership.totalClasses) {
-            throw new ConflictError(`Cannot schedule more classes. Package allows ${activeMembership.totalClasses} classes, student has used ${activeMembership.classesUsed} and is scheduled for ${futureSlots} upcoming classes.`);
+        const allowedClasses = activeMembership.totalClasses + (activeMembership.freeClasses || 0);
+        if (activeMembership.classesUsed + futureSlots >= allowedClasses) {
+            throw new ConflictError(`Cannot schedule more classes. Package allows ${activeMembership.totalClasses} classes${activeMembership.freeClasses ? ` and ${activeMembership.freeClasses} free classes` : ''}, student has used ${activeMembership.classesUsed} and is scheduled for ${futureSlots} upcoming classes.`);
         }
 
         // Find or create schedule block for this coach on this date

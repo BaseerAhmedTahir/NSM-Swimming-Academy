@@ -25,7 +25,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const [branchName, setBranchName] = useState('My Branch');
     const [student, setStudent] = useState<any>(null);
-    const [attendance, setAttendance] = useState({ attended: 0, absent: 0, totalClasses: 24 });
+    const [attendance, setAttendance] = useState({ attended: 0, absent: 0, totalClasses: 24, freeClasses: 0 });
     const [loading, setLoading] = useState(true);
 
     // Review state
@@ -49,10 +49,11 @@ export default function ProfileScreen() {
                     const profileData = profRes.data.data;
                     setStudent(profileData);
                     if (!storedBranch && profileData.branch) setBranchName(shortenBranchName(profileData.branch.name));
-                    // Use real totalClasses from server (from active MembershipHistory)
+                    // Use real totalClasses and freeClasses from server
                     setAttendance(prev => ({
                         ...prev,
                         totalClasses: profileData.totalClasses || 0,
+                        freeClasses: profileData.freeClasses || 0,
                     }));
                     if (profileData.review) {
                         setReviewRating(profileData.review.rating);
@@ -244,12 +245,12 @@ export default function ProfileScreen() {
                         <GlassCard style={styles.attendanceCardLayout}>
                             <View style={[styles.rowBetween, { marginBottom: 12 }]}>
                                 <Text style={styles.cardLabel}>Attended Classes</Text>
-                                <Text style={styles.cardValueHighlight}>{attendance.attended} / {attendance.totalClasses}</Text>
+                                <Text style={styles.cardValueHighlight}>{attendance.attended} / {attendance.totalClasses + attendance.freeClasses}</Text>
                             </View>
 
                             {/* Progress bar */}
                             <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${Math.min(100, (attendance.attended / attendance.totalClasses) * 100)}%` }]} />
+                                <View style={[styles.progressBarFill, { width: `${Math.min(100, (attendance.attended / (attendance.totalClasses + attendance.freeClasses)) * 100)}%` }]} />
                             </View>
 
                             <View style={styles.statsGrid}>
@@ -262,10 +263,19 @@ export default function ProfileScreen() {
                                     <Text style={styles.statLabelSm}>Absent</Text>
                                 </View>
                                 <View style={styles.statItem}>
-                                    <Text style={styles.statNumber}>{attendance.totalClasses - attendance.attended}</Text>
+                                    <Text style={styles.statNumber}>{(attendance.totalClasses + attendance.freeClasses) - attendance.attended}</Text>
                                     <Text style={styles.statLabelSm}>Remaining</Text>
                                 </View>
                             </View>
+                            {attendance.freeClasses > 0 && (
+                                <View style={{flexDirection: 'row', justifyContent: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(11,246,246,0.15)'}}>
+                                    <View style={{backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)'}}>
+                                        <Text style={{fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#10b981'}}>
+                                            {attendance.totalClasses} Package + {attendance.freeClasses} Free Classes
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
                         </GlassCard>
                     </View>
 

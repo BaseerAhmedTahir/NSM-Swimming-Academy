@@ -12,7 +12,7 @@ import api from '../../lib/api';
 export default function HomeScreen() {
   const [branchName, setBranchName] = useState('My Branch');
   const [student, setStudent] = useState<any>(null);
-  const [attendance, setAttendance] = useState({ attended: 0, totalClasses: 0, remaining: 0 });
+  const [attendance, setAttendance] = useState({ attended: 0, totalClasses: 0, freeClasses: 0, remaining: 0 });
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -43,9 +43,11 @@ export default function HomeScreen() {
         if (attRes.data.success) {
           const records: any[] = attRes.data.data;
           const attended = records.filter(r => r.status === 'ATTENDED').length;
-          // Get totalClasses directly from profile response data (student state isn't set yet)
+          // Get totalClasses and freeClasses directly from profile response data
           const total = profileRes.data.success ? (profileRes.data.data.totalClasses || 0) : 0;
-          setAttendance({ attended, totalClasses: total, remaining: Math.max(0, total - attended) });
+          const free = profileRes.data.success ? (profileRes.data.data.freeClasses || 0) : 0;
+          const effectiveTotal = total + free;
+          setAttendance({ attended, totalClasses: total, freeClasses: free, remaining: Math.max(0, effectiveTotal - attended) });
         }
 
         if (notifRes.data.success) {
@@ -139,7 +141,10 @@ export default function HomeScreen() {
                 <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
               </View>
               <Text style={styles.statLabel}>Attendance</Text>
-              <Text style={styles.statValue}>{attendance.attended}/{attendance.totalClasses}</Text>
+              <Text style={styles.statValue}>{attendance.attended}/{attendance.totalClasses + attendance.freeClasses}</Text>
+              {attendance.freeClasses > 0 && (
+                <Text style={{fontFamily: 'Poppins_500Medium', fontSize: 9, color: '#10b981', marginTop: 2}}>+{attendance.freeClasses} free</Text>
+              )}
             </GlassCard>
           </ScrollView>
 

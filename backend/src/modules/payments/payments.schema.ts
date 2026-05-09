@@ -38,3 +38,11 @@ export const updateInstallmentSchema = z.object({
     paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })
 });
+
+export const receivePaymentSchema = z.object({
+  body: z.object({
+    amount: z.number().min(0.01, 'Amount must be greater than 0'),
+    paymentMode: z.enum(['CASH', 'CARD', 'ONLINE']),
+    notes: z.string().optional()
+  })
+});

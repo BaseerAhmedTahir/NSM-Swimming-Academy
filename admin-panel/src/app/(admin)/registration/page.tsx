@@ -3,7 +3,8 @@
 import { useState } from "react";
 import {
     Users, Plus, Search, Filter, MoreHorizontal,
-    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer, Activity, UserMinus
+    Trash2, Edit, Eye, FileText, CheckCircle2, UserPlus, Printer, Activity, UserMinus,
+    DollarSign, CreditCard, ChevronDown, ChevronUp, Gift
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,8 +115,10 @@ export default function RegistrationPage() {
                         status: s.status,
                         membershipStartDate: s.membershipStartDate,
                         membershipExpiryDate: s.membershipExpiryDate,
+                        freeClasses: s.membershipHistory?.[0]?.freeClasses ?? 0,
                         attendance: {
                             totalClasses: s.membershipHistory?.[0]?.totalClasses ?? 0,
+                            freeClasses: s.membershipHistory?.[0]?.freeClasses ?? 0,
                             attended: s.membershipHistory?.[0]?.classesUsed ?? 0,
                             startDate: s.membershipStartDate ? new Date(s.membershipStartDate).toISOString().split('T')[0] : "N/A",
                             expiryDate: s.membershipExpiryDate ? new Date(s.membershipExpiryDate).toISOString().split('T')[0] : "N/A",
@@ -151,13 +154,20 @@ export default function RegistrationPage() {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
+    const [isReceivePaymentOpen, setIsReceivePaymentOpen] = useState(false);
     
     const [renewData, setRenewData] = useState({
         packageType: "BASIC",
         paymentMode: "CARD",
         paymentStatus: "PAID",
-        paidAmount: 0
+        paidAmount: 0,
+        freeClasses: 0
     });
+
+    // Receive Payment State
+    const [receivePaymentData, setReceivePaymentData] = useState({ amount: 0, paymentMode: 'CASH', notes: '' });
+    const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+    const [expandedHistoryIdx, setExpandedHistoryIdx] = useState<number | null>(null);
 
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -316,6 +326,43 @@ export default function RegistrationPage() {
         } catch (err: any) {
             console.error(err);
             toast.error(err.response?.data?.message || "Failed to delete student");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleOpenReceivePayment = async (student: any) => {
+        setSelectedStudent(student);
+        setReceivePaymentData({ amount: student.fee?.pendingAmount || 0, paymentMode: student.fee?.mode === 'CARD' ? 'CARD' : 'CASH', notes: '' });
+        setPaymentHistory([]);
+        setIsReceivePaymentOpen(true);
+
+        // Fetch payment history
+        try {
+            const res = await api.get(`/payments/student/${student.id}/history`);
+            if (res.data.success) {
+                setPaymentHistory(res.data.data);
+            }
+        } catch (err) {
+            console.error("Failed to load payment history", err);
+        }
+    };
+
+    const handleReceivePayment = async () => {
+        if (!selectedStudent || receivePaymentData.amount <= 0) return;
+        const paymentId = selectedStudent.fee?.paymentId;
+        if (!paymentId) {
+            toast.error("No payment record found for this student");
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            await api.post(`/payments/${paymentId}/receive`, receivePaymentData);
+            toast.success("Payment received successfully!");
+            setIsReceivePaymentOpen(false);
+            fetchStudents();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to receive payment");
         } finally {
             setIsProcessing(false);
         }
@@ -537,7 +584,12 @@ export default function RegistrationPage() {
                                     <TableCell className="font-medium">{student.branch}</TableCell>
                                     <TableCell>
                                         <p className="font-bold text-sm text-foreground">{student.membership}</p>
-                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">{student.attendance.totalClasses} Classes</p>
+                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                            {student.attendance.totalClasses} Classes
+                                            {student.attendance.freeClasses > 0 && (
+                                                <span className="text-emerald-600 ml-1">+ {student.attendance.freeClasses} Free</span>
+                                            )}
+                                        </p>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
@@ -584,6 +636,11 @@ export default function RegistrationPage() {
                                                 ) : (
                                                     <DropdownMenuItem className="cursor-pointer font-medium hover:bg-success/10 text-success rounded-lg p-2" onClick={() => handleOpenRenew(student)}>
                                                         <CheckCircle2 className="mr-2 h-4 w-4" /> Renew Membership
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {(student.fee?.status === 'PENDING' || student.fee?.status === 'PARTIAL') && (
+                                                    <DropdownMenuItem className="cursor-pointer font-medium hover:bg-emerald-500/10 text-emerald-600 rounded-lg p-2" onClick={() => handleOpenReceivePayment(student)}>
+                                                        <DollarSign className="mr-2 h-4 w-4" /> Receive Payment
                                                     </DropdownMenuItem>
                                                 )}
                                                 <DropdownMenuSeparator className="bg-border/50" />
@@ -913,7 +970,7 @@ export default function RegistrationPage() {
 
             {/* 4.6.5 Student Profil View placeholder (re-using profile from schedule or simpler dialog) */}
             <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-border/50 rounded-3xl">
+                <DialogContent className="sm:max-w-[500px] max-h-[88vh] overflow-y-auto p-0 border-border/50 rounded-3xl select-none">
                     <DialogTitle className="sr-only">Student Details</DialogTitle>
                     {selectedStudent && (
                         <>
@@ -990,34 +1047,108 @@ export default function RegistrationPage() {
                                     <div className="space-y-3">
                                         {membershipHistory.length > 0 ? (
                                             membershipHistory.map((pkg, idx) => (
-                                                <div key={idx} className="bg-white p-3 rounded-xl border border-border/40 shadow-sm flex flex-col gap-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
+                                                <div key={idx} className="bg-white rounded-xl border border-border/40 shadow-sm overflow-hidden">
+                                                    <button
+                                                        type="button"
+                                                        className="w-full p-3 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+                                                        onClick={() => setExpandedHistoryIdx(expandedHistoryIdx === idx ? null : idx)}
+                                                    >
+                                                        <div className="text-left">
                                                             <p className="font-bold text-[#0B213F] text-sm">{pkg.packageType} Package</p>
                                                             <p className="text-[10px] font-bold text-slate-500">
-                                                                Started: {new Date(pkg.startDate).toLocaleDateString()}
+                                                                {new Date(pkg.startDate).toLocaleDateString()} → {new Date(pkg.expiryDate).toLocaleDateString()}
                                                             </p>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="text-xs font-black text-[#1C5CAA]">{pkg.classesUsed} / {pkg.totalClasses} Classes</p>
-                                                            <span className={cn(
-                                                                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
-                                                                pkg.status === 'ACTIVE' ? "bg-success/10 text-success" : "bg-slate-100 text-slate-500"
-                                                            )}>{pkg.status}</span>
-                                                        </div>
-                                                    </div>
-                                                    {pkg.totalAmount != null && (
-                                                        <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-100">
-                                                            <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-right">
+                                                                <p className="text-xs font-black text-[#1C5CAA]">
+                                                                    {pkg.classesUsed} / {pkg.totalClasses + (pkg.freeClasses || 0)} Classes
+                                                                </p>
                                                                 <span className={cn(
-                                                                    "px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase",
-                                                                    pkg.paymentStatus === 'PAID' ? "bg-success/10 text-success" : (pkg.paymentStatus === 'PARTIAL' ? "bg-blue-500/10 text-blue-500" : "bg-warning/10 text-warning")
-                                                                )}>
-                                                                    {pkg.paymentStatus || 'UNKNOWN'}
-                                                                </span>
-                                                                <span className="text-xs font-bold text-slate-600">AED {pkg.paidAmount} Paid</span>
+                                                                    "text-[9px] font-black uppercase px-1.5 py-0.5 rounded",
+                                                                    pkg.status === 'ACTIVE' ? "bg-success/10 text-success" : "bg-slate-100 text-slate-500"
+                                                                )}>{pkg.status}</span>
                                                             </div>
-                                                            <span className="text-xs font-black text-[#0B213F]">Total: AED {pkg.totalAmount}</span>
+                                                            {expandedHistoryIdx === idx ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                                        </div>
+                                                    </button>
+                                                    {expandedHistoryIdx === idx && (
+                                                        <div className="px-3 pb-3 space-y-2 border-t border-slate-100">
+                                                            {/* Classes Breakdown */}
+                                                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                                                <div className="bg-blue-50 rounded-lg p-2 text-center">
+                                                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Package</p>
+                                                                    <p className="text-sm font-black text-[#0B213F]">{pkg.totalClasses}</p>
+                                                                </div>
+                                                                <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                                                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Free</p>
+                                                                    <p className="text-sm font-black text-emerald-600">{pkg.freeClasses || 0}</p>
+                                                                </div>
+                                                                <div className="bg-purple-50 rounded-lg p-2 text-center">
+                                                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Used</p>
+                                                                    <p className="text-sm font-black text-purple-600">{pkg.classesUsed}</p>
+                                                                </div>
+                                                            </div>
+                                                            {/* Attendance */}
+                                                            <div className="bg-slate-50 rounded-lg p-2 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                                                                    <span className="text-xs font-bold text-slate-600">Attended: {pkg.attendedClasses ?? 0}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <UserMinus className="w-3.5 h-3.5 text-error" />
+                                                                    <span className="text-xs font-bold text-slate-600">Absent: {pkg.absentClasses ?? 0}</span>
+                                                                </div>
+                                                            </div>
+                                                            {/* Coach Info */}
+                                                            {pkg.coaches && pkg.coaches.length > 0 && (
+                                                                <div className="bg-slate-50 rounded-lg p-2">
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Coach(es)</p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {pkg.coaches.map((c: any, ci: number) => (
+                                                                            <span key={ci} className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{c.name}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* Payment Details */}
+                                                            {pkg.totalAmount != null && (
+                                                                <div className="bg-slate-50 rounded-lg p-2 space-y-1">
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Payment Details</p>
+                                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Total</span>
+                                                                            <span className="text-[10px] font-bold text-[#0B213F]">AED {pkg.totalAmount}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Paid</span>
+                                                                            <span className="text-[10px] font-bold text-success">AED {pkg.paidAmount ?? 0}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Discount</span>
+                                                                            <span className="text-[10px] font-bold text-orange-500">AED {pkg.discount ?? 0}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Pending</span>
+                                                                            <span className="text-[10px] font-bold text-warning">AED {pkg.pendingAmount ?? 0}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Mode</span>
+                                                                            <span className="text-[10px] font-bold text-slate-700">{pkg.paymentMode || '-'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between">
+                                                                            <span className="text-[10px] text-slate-500">Status</span>
+                                                                            <span className={cn(
+                                                                                "text-[10px] font-black uppercase",
+                                                                                pkg.paymentStatus === 'PAID' ? 'text-success' : (pkg.paymentStatus === 'PARTIAL' ? 'text-blue-500' : 'text-warning')
+                                                                            )}>{pkg.paymentStatus || '-'}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {pkg.invoiceNumber && (
+                                                                        <p className="text-[9px] font-bold text-slate-400 mt-1">Invoice: {pkg.invoiceNumber}</p>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1070,6 +1201,16 @@ export default function RegistrationPage() {
                                         )}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Free/Bonus Classes</Label>
+                                <Input 
+                                    type="number" 
+                                    min={0}
+                                    placeholder="0"
+                                    value={renewData.freeClasses === 0 ? '' : renewData.freeClasses}
+                                    onChange={(e) => setRenewData({...renewData, freeClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Payment Mode</Label>
@@ -1126,6 +1267,122 @@ export default function RegistrationPage() {
                             </Button>
                         </div>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isReceivePaymentOpen} onOpenChange={setIsReceivePaymentOpen}>
+                <DialogContent className="sm:max-w-[500px] max-h-[88vh] overflow-y-auto rounded-3xl p-0 border-border/50 select-none">
+                    <DialogTitle className="sr-only">Receive Payment</DialogTitle>
+                    <div className="bg-emerald-50 px-6 py-4 border-b border-emerald-200 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
+                            <DollarSign className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-[#0B213F]">Receive Payment</h3>
+                            <p className="text-sm font-medium text-emerald-700">{selectedStudent?.name} • {selectedStudent?.studentId}</p>
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                        {/* Balance Summary */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Total</p>
+                                <p className="text-sm font-black text-[#0B213F]">AED {selectedStudent?.fee?.amount?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-200">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Paid</p>
+                                <p className="text-sm font-black text-emerald-600">AED {selectedStudent?.fee?.paidAmount?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Remaining</p>
+                                <p className="text-sm font-black text-orange-600">AED {selectedStudent?.fee?.pendingAmount?.toFixed(2) || '0.00'}</p>
+                            </div>
+                        </div>
+
+                        {/* Payment History */}
+                        {paymentHistory.length > 0 && (
+                            <div>
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment History</h4>
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                    {paymentHistory.map((ph: any, i: number) => (
+                                        <div key={i} className="bg-slate-50 rounded-lg p-2 flex items-center justify-between text-xs">
+                                            <div>
+                                                <p className="font-bold text-[#0B213F]">{ph.invoiceNumber}</p>
+                                                <p className="text-[10px] text-slate-500">{new Date(ph.createdAt).toLocaleDateString()} • {ph.paymentMode}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-emerald-600">AED {ph.paidAmount?.toFixed(2)}</p>
+                                                <span className={cn(
+                                                    "text-[9px] font-black uppercase",
+                                                    ph.status === 'PAID' ? 'text-success' : 'text-warning'
+                                                )}>{ph.status}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Payment Form */}
+                        <div className="border-t border-slate-200 pt-4 space-y-3">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Record New Payment</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold">Amount (AED)</Label>
+                                    <Input 
+                                        type="number" 
+                                        step="any" 
+                                        min={0.01}
+                                        max={selectedStudent?.fee?.pendingAmount || 99999}
+                                        placeholder="Enter amount"
+                                        value={receivePaymentData.amount === 0 ? '' : receivePaymentData.amount}
+                                        onChange={(e) => setReceivePaymentData({...receivePaymentData, amount: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold">Payment Method</Label>
+                                    <Select value={receivePaymentData.paymentMode} onValueChange={(v) => setReceivePaymentData({...receivePaymentData, paymentMode: v})}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="CASH"><div className="flex items-center gap-2"><DollarSign className="w-3 h-3" /> Cash</div></SelectItem>
+                                            <SelectItem value="CARD"><div className="flex items-center gap-2"><CreditCard className="w-3 h-3" /> Card / POS</div></SelectItem>
+                                            <SelectItem value="ONLINE">Online Transfer</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs font-bold">Notes (Optional)</Label>
+                                <Input 
+                                    placeholder="e.g., Cash received at front desk"
+                                    value={receivePaymentData.notes}
+                                    onChange={(e) => setReceivePaymentData({...receivePaymentData, notes: e.target.value})}
+                                />
+                            </div>
+                            {receivePaymentData.amount > 0 && (
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                                    <div className="flex justify-between text-xs">
+                                        <span className="font-bold text-slate-600">After this payment:</span>
+                                        <span className="font-black text-emerald-600">
+                                            {(selectedStudent?.fee?.pendingAmount || 0) - receivePaymentData.amount <= 0 ? 'FULLY PAID ✓' : `AED ${((selectedStudent?.fee?.pendingAmount || 0) - receivePaymentData.amount).toFixed(2)} remaining`}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 border-t flex justify-end gap-3">
+                        <Button variant="outline" className="rounded-xl" onClick={() => setIsReceivePaymentOpen(false)}>Cancel</Button>
+                        <Button
+                            disabled={isProcessing || receivePaymentData.amount <= 0}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold gap-2"
+                            onClick={handleReceivePayment}
+                        >
+                            {isProcessing ? 'Processing...' : <><DollarSign className="w-4 h-4" /> Confirm Payment</>}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 

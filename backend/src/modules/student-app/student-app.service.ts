@@ -15,7 +15,7 @@ export const getProfile = async (studentId: string) => {
                 where: { status: MembershipStatus.ACTIVE },
                 orderBy: { createdAt: 'desc' },
                 take: 1,
-                select: { totalClasses: true, classesUsed: true }
+                select: { totalClasses: true, classesUsed: true, freeClasses: true }
             },
             payments: {
                 orderBy: { paymentDate: 'desc' },
@@ -41,6 +41,7 @@ export const getProfile = async (studentId: string) => {
         ...studentData,
         totalClasses: activeMembership?.totalClasses ?? 0,
         classesUsed: activeMembership?.classesUsed ?? 0,
+        freeClasses: activeMembership?.freeClasses ?? 0,
         review: reviews[0] || null,
     };
 };

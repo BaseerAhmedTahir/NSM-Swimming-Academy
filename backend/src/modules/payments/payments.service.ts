@@ -197,3 +197,80 @@ export const updateInstallment = async (id: string, branchId: string | undefined
         }
     });
 };
+
+// Receive a payment against an existing PENDING/PARTIAL payment record
+export const receivePayment = async (id: string, branchId: string | undefined, data: any) => {
+    const where = branchId ? { id, branchId } : { id };
+    const payment = await prisma.payment.findFirstOrThrow({
+        where,
+        include: { student: { select: { id: true, name: true, studentId: true } } }
+    });
+
+    if (payment.status === 'PAID') {
+        throw new Error('This payment is already fully paid');
+    }
+
+    const receiveAmount = data.amount;
+    if (receiveAmount <= 0) {
+        throw new Error('Payment amount must be greater than 0');
+    }
+
+    const newPaidAmount = payment.paidAmount + receiveAmount;
+    const newPendingAmount = Math.max(0, payment.totalAmount - newPaidAmount);
+    
+    let newStatus: string;
+    if (newPendingAmount <= 0) {
+        newStatus = 'PAID';
+    } else if (newPaidAmount > 0) {
+        newStatus = 'PARTIAL';
+    } else {
+        newStatus = 'PENDING';
+    }
+
+    return await prisma.$transaction(async (tx: any) => {
+        // 1. Update the payment record
+        const updatedPayment = await tx.payment.update({
+            where: { id },
+            data: {
+                paidAmount: newPaidAmount,
+                pendingAmount: newPendingAmount,
+                status: newStatus,
+                notes: payment.notes 
+                    ? `${payment.notes}\n[${new Date().toISOString()}] Received AED ${receiveAmount.toFixed(2)} via ${data.paymentMode}${data.notes ? ' - ' + data.notes : ''}`
+                    : `[${new Date().toISOString()}] Received AED ${receiveAmount.toFixed(2)} via ${data.paymentMode}${data.notes ? ' - ' + data.notes : ''}`
+            },
+            include: {
+                student: { select: { id: true, name: true, studentId: true } },
+                installments: { orderBy: { createdAt: 'desc' } }
+            }
+        });
+
+        // 2. Create an installment record as audit trail for this payment receipt
+        await tx.installment.create({
+            data: {
+                paymentId: id,
+                amount: receiveAmount,
+                dueDate: new Date(),
+                paidDate: new Date(),
+                status: 'PAID'
+            }
+        });
+
+        return updatedPayment;
+    });
+};
+
+// Get full payment history for a student including all installments/receipts
+export const getStudentPaymentHistory = async (studentId: string, branchId?: string) => {
+    const studentWhere = branchId ? { id: studentId, branchId } : { id: studentId };
+    await prisma.student.findFirstOrThrow({ where: studentWhere });
+
+    return await prisma.payment.findMany({
+        where: { studentId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+            installments: { orderBy: { createdAt: 'asc' } },
+            student: { select: { id: true, name: true, studentId: true } }
+        }
+    });
+};

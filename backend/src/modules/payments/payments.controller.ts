@@ -71,3 +71,23 @@ export const updateInstallment = async (req: Request, res: Response, next: NextF
         next(error);
     }
 };
+
+export const receivePayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const branchId = req.scopedBranchId;
+        const payment = await paymentsService.receivePayment(req.params.id as string, branchId, req.body);
+        return successResponse({ res, data: payment, message: 'Payment received successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getStudentPaymentHistory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const branchId = req.scopedBranchId;
+        const history = await paymentsService.getStudentPaymentHistory(req.params.studentId as string, branchId);
+        return successResponse({ res, data: history });
+    } catch (error) {
+        next(error);
+    }
+};
