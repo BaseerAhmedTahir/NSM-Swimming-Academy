@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, CheckCircle2, Mail, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,10 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
     const [isLoading, setIsLoading] = useState(false);
     const [customLevelText, setCustomLevelText] = useState("");
 
+    // Success dialog state (Issue #1)
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+    const [successMessage, setSuccessMessage] = useState({ emailSent: true, emailError: '' });
+
     const [formData, setFormData] = useState({
         name: "",
         age: 5,
@@ -38,6 +42,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         phone: "+971 ",
         discount: 0,
         freeClasses: 0,
+        oldClasses: 0,
         gender: "MALE",
         category: "KID",
         branchId: "",
@@ -154,6 +159,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 phone: initialData.phone || "+971 ",
                 discount: initialData.discount || 0,
                 freeClasses: initialData.freeClasses || 0,
+                oldClasses: initialData.oldClasses || 0,
                 gender: initialData.gender || "MALE",
                 category: initialData.category || "KID",
                 branchId: initialData.branchId || "",
@@ -178,6 +184,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 phone: "+971 ",
                 discount: 0,
                 freeClasses: 0,
+                oldClasses: 0,
                 gender: "MALE",
                 category: "KID",
                 branchId: user?.role === 'STAFF' && user?.branchId ? user.branchId : branches[0]?.id || '',
@@ -234,6 +241,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 category: formData.category,
                 discount: formData.discount,
                 freeClasses: formData.freeClasses,
+                oldClasses: formData.oldClasses,
                 branchId: formData.branchId,
                 paymentStatus: formData.paymentStatus,
                 trn: formData.trn,
@@ -263,10 +271,12 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                     password: 'nsm' + (formData.phone.replace(/\s/g, '').slice(-4) || '1234')
                 };
                 const res = await api.post('/students', createData);
-                const emailStatus = res.data.data.emailResult?.success
-                    ? "Welcome email sent!"
-                    : `Student added, but email failed: ${res.data.data.emailResult?.error || 'Unknown error'}`;
-                toast.success(`Student added! ${emailStatus}`);
+                const emailOk = res.data.data.emailResult?.success === true;
+                const emailErr = res.data.data.emailResult?.error || '';
+                
+                // Show prominent success dialog instead of a small toast
+                setSuccessMessage({ emailSent: emailOk, emailError: emailErr });
+                setShowSuccessDialog(true);
             }
 
             if (formData.reminderDate) {
@@ -300,6 +310,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
     };
 
     return (
+        <>
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[1000px] max-h-[88vh] overflow-y-auto p-0 border-none shadow-2xl bg-[#f8fafc] rounded-3xl">
                 <form onSubmit={handleSubmit}>
@@ -317,6 +328,21 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                             </DialogDescription>
                         </div>
                     </div>
+
+                    {/* T&C Email Notice Banner (Issue #2) - only show in add mode */}
+                    {!isEditMode && (
+                        <div className="mx-4 mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-3">
+                            <Mail className="w-5 h-5 text-[#1C5CAA] shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-bold text-[#0B213F]">
+                                    📋 Upon registration, a welcome email containing <span className="text-[#1C5CAA]">login credentials</span> and <span className="text-[#1C5CAA]">Terms & Conditions</span> will be automatically sent to the student's email address.
+                                </p>
+                                <p className="text-[10px] font-medium text-slate-500 mt-1">
+                                    Please guide students to also check their spam/junk folder if they don't see the email in their inbox.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="p-4 border-t border-slate-100">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -527,22 +553,42 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                         </Select>
                                     </div>
                                     {/* Free/Bonus Classes */}
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-bold text-[#0B213F]">Free/Bonus Classes</Label>
-                                        <Input
-                                            className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl"
-                                            type="number"
-                                            min={0}
-                                            placeholder="0"
-                                            value={formData.freeClasses === 0 ? '' : formData.freeClasses}
-                                            onChange={(e) => setFormData({...formData, freeClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
-                                        />
-                                        {formData.freeClasses > 0 && activeItem && (
-                                            <p className="text-[10px] font-bold text-emerald-600 mt-0.5">
-                                                Total classes: {activeItem.classes} + {formData.freeClasses} free = {activeItem.classes + formData.freeClasses}
-                                            </p>
-                                        )}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-bold text-[#0B213F]">Free/Bonus Classes</Label>
+                                            <Input
+                                                className="h-9 bg-white border-[#B2C5E0] text-sm font-medium shadow-sm rounded-xl"
+                                                type="number"
+                                                min={0}
+                                                placeholder="0"
+                                                value={formData.freeClasses === 0 ? '' : formData.freeClasses}
+                                                onChange={(e) => setFormData({...formData, freeClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                                            />
+                                            <p className="text-[10px] font-medium text-slate-400">New bonus/complimentary classes</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-bold text-orange-600">Old/Carryover Classes</Label>
+                                            <Input
+                                                className="h-9 bg-orange-50 border-orange-200 focus-visible:ring-orange-400 text-sm font-medium shadow-sm rounded-xl"
+                                                type="number"
+                                                min={0}
+                                                placeholder="0"
+                                                value={formData.oldClasses === 0 ? '' : formData.oldClasses}
+                                                onChange={(e) => setFormData({...formData, oldClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                                            />
+                                            <p className="text-[10px] font-medium text-orange-400">Remaining from previous expired package</p>
+                                        </div>
                                     </div>
+                                    {(formData.freeClasses > 0 || formData.oldClasses > 0) && activeItem && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 mt-1">
+                                            <p className="text-[10px] font-bold text-[#0B213F]">
+                                                Total classes: {activeItem.classes} package
+                                                {formData.freeClasses > 0 && <span className="text-emerald-600"> + {formData.freeClasses} free</span>}
+                                                {formData.oldClasses > 0 && <span className="text-orange-600"> + {formData.oldClasses} old/carryover</span>}
+                                                {' = '}<span className="text-[#1C5CAA] font-black">{activeItem.classes + formData.freeClasses + formData.oldClasses}</span>
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <Label className="text-xs font-bold text-[#0B213F]">Payment Method</Label>
@@ -672,5 +718,75 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 </form>
             </DialogContent>
         </Dialog>
+
+        {/* Registration Success Dialog (Issue #1) */}
+        <Dialog open={showSuccessDialog} onOpenChange={() => {}}>
+            <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+                <div className="p-8 flex flex-col items-center text-center">
+                    <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-5">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                    </div>
+                    <DialogTitle className="text-2xl font-black text-[#0B213F] mb-2">
+                        Student Registered Successfully! 🎉
+                    </DialogTitle>
+                    <DialogDescription className="text-sm font-medium text-slate-500 mb-4">
+                        The student has been enrolled in the academy.
+                    </DialogDescription>
+
+                    {/* Email Status */}
+                    <div className={`w-full rounded-xl p-4 mb-3 border ${successMessage.emailSent ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                        <div className="flex items-start gap-3">
+                            <Mail className={`w-5 h-5 shrink-0 mt-0.5 ${successMessage.emailSent ? 'text-emerald-600' : 'text-red-500'}`} />
+                            <div className="text-left">
+                                {successMessage.emailSent ? (
+                                    <>
+                                        <p className="text-sm font-bold text-emerald-700">Welcome email with Terms & Conditions has been sent!</p>
+                                        <p className="text-xs font-medium text-emerald-600 mt-1">
+                                            The email contains login credentials, pool rules, and membership policies.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm font-bold text-red-600">Email could not be sent</p>
+                                        <p className="text-xs font-medium text-red-500 mt-1">
+                                            {successMessage.emailError || 'SMTP connection failed. Please share credentials manually.'}
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Spam folder warning */}
+                    <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="text-left">
+                                <p className="text-sm font-bold text-amber-700">
+                                    Please guide the student to check their email
+                                </p>
+                                <p className="text-xs font-medium text-amber-600 mt-1">
+                                    Ask them to check <strong>both the inbox AND the spam/junk folder</strong>, as sometimes the welcome email lands in spam.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-8 pb-8">
+                    <Button 
+                        className="w-full h-12 rounded-2xl font-black bg-[#1C5CAA] hover:bg-blue-800 text-white text-base shadow-lg"
+                        onClick={() => {
+                            setShowSuccessDialog(false);
+                            if (onSuccess) onSuccess();
+                            onClose();
+                        }}
+                    >
+                        OK, Got It
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }

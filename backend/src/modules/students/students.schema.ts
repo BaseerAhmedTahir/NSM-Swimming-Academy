@@ -14,6 +14,7 @@ export const renewStudentSchema = z.object({
     paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).default('PAID'),
     paidAmount: z.coerce.number().min(0).optional(),
     freeClasses: z.coerce.number().int().min(0).optional().default(0),
+    oldClasses: z.coerce.number().int().min(0).optional().default(0),
     isInstallment: z.boolean().default(false),
   })
 });
@@ -38,6 +39,7 @@ export const updateStudentSchema = z.object({
     paidAmount: z.coerce.number().min(0).optional(),
     vatAmount: z.coerce.number().min(0).optional(),
     freeClasses: z.coerce.number().int().min(0).optional(),
+    oldClasses: z.coerce.number().int().min(0).optional(),
     trn: z.string().optional(),
   })
 });
@@ -60,6 +62,7 @@ export const createStudentSchema = z.object({
       paidAmount: z.coerce.number().min(0).optional(),
       vatAmount: z.coerce.number().min(0).optional(),
       freeClasses: z.coerce.number().int().min(0).optional().default(0),
+      oldClasses: z.coerce.number().int().min(0).optional().default(0),
       isInstallment: z.boolean().optional().default(false),
       trn: z.string().optional(),
     })

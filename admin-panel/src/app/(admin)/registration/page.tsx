@@ -117,9 +117,11 @@ export default function RegistrationPage() {
                         membershipStartDate: s.membershipStartDate,
                         membershipExpiryDate: s.membershipExpiryDate,
                         freeClasses: s.membershipHistory?.[0]?.freeClasses ?? 0,
+                        oldClasses: s.membershipHistory?.[0]?.oldClasses ?? 0,
                         attendance: {
                             totalClasses: s.membershipHistory?.[0]?.totalClasses ?? 0,
                             freeClasses: s.membershipHistory?.[0]?.freeClasses ?? 0,
+                            oldClasses: s.membershipHistory?.[0]?.oldClasses ?? 0,
                             attended: s.membershipHistory?.[0]?.classesUsed ?? 0,
                             startDate: s.membershipStartDate ? new Date(s.membershipStartDate).toISOString().split('T')[0] : "N/A",
                             expiryDate: s.membershipExpiryDate ? new Date(s.membershipExpiryDate).toISOString().split('T')[0] : "N/A",
@@ -162,7 +164,8 @@ export default function RegistrationPage() {
         paymentMode: "CARD",
         paymentStatus: "PAID",
         paidAmount: 0,
-        freeClasses: 0
+        freeClasses: 0,
+        oldClasses: 0
     });
 
     // Receive Payment State
@@ -580,6 +583,9 @@ export default function RegistrationPage() {
                                             {student.attendance.totalClasses} Classes
                                             {student.attendance.freeClasses > 0 && (
                                                 <span className="text-emerald-600 ml-1">+ {student.attendance.freeClasses} Free</span>
+                                            )}
+                                            {student.attendance.oldClasses > 0 && (
+                                                <span className="text-orange-500 ml-1">+ {student.attendance.oldClasses} Old</span>
                                             )}
                                         </p>
                                     </TableCell>
@@ -1018,6 +1024,18 @@ export default function RegistrationPage() {
                                     value={renewData.freeClasses === 0 ? '' : renewData.freeClasses}
                                     onChange={(e) => setRenewData({...renewData, freeClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-orange-600 font-bold">Old/Carryover Classes</Label>
+                                <Input 
+                                    type="number" 
+                                    min={0}
+                                    placeholder="0"
+                                    className="border-orange-200 bg-orange-50 focus-visible:ring-orange-400"
+                                    value={renewData.oldClasses === 0 ? '' : renewData.oldClasses}
+                                    onChange={(e) => setRenewData({...renewData, oldClasses: e.target.value === '' ? 0 : parseInt(e.target.value)})}
+                                />
+                                <p className="text-[10px] font-medium text-orange-400">Remaining classes from previous expired package</p>
                             </div>
                             <div className="space-y-2">
                                 <Label>Payment Mode</Label>

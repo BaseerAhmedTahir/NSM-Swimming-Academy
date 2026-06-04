@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { format, addDays, subDays, isSameDay } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Waves, Activity, UserPlus } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, UserMinus, MessageSquare, Plus, Info, Check, X, Waves, Activity, UserPlus, Bell, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -76,8 +76,38 @@ export default function SchedulePage() {
     const [membershipHistory, setMembershipHistory] = useState<any[]>([]);
     const [studentStatusMap, setStudentStatusMap] = useState<Record<string, string>>({}); // id -> status
 
+    // Last class renewal reminder state (Issue #5)
+    const [showLastClassAlert, setShowLastClassAlert] = useState(false);
+    const [lastClassInfo, setLastClassInfo] = useState<{ studentName: string; remainingClasses: number; studentId: string } | null>(null);
+    const [isCreatingReminder, setIsCreatingReminder] = useState(false);
+
     const [scheduleMap, setScheduleMap] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Monthly scheduled dates for calendar green dots
+    const [scheduledDates, setScheduledDates] = useState<Date[]>([]);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+
+    const fetchMonthlyScheduledDates = async (year: number, month: number) => {
+        if (!selectedBranch) return;
+        console.log('[calendar] fetching monthly summary', { year, month, branchId: selectedBranch });
+        try {
+            const res = await api.get('/schedules/monthly-summary', {
+                params: { year, month, branchId: selectedBranch }
+            });
+            console.log('[calendar] monthly-summary response:', res.data?.data);
+            if (res.data?.data) {
+                const dates: Date[] = (res.data.data as string[]).map(d => {
+                    const [y, m, day] = d.split('-').map(Number);
+                    return new Date(y, m - 1, day);
+                });
+                console.log('[calendar] setting scheduledDates:', dates);
+                setScheduledDates(dates);
+            }
+        } catch (e) {
+            console.error('Failed to fetch monthly scheduled dates', e);
+        }
+    };
 
     const fetchSchedule = async (date: string) => {
         if (!selectedBranch) return;
@@ -130,6 +160,16 @@ export default function SchedulePage() {
         }
     }, [selectedBranch]);
 
+    // Fetch monthly dots whenever branch or calendar month changes
+    useEffect(() => {
+        if (selectedBranch) {
+            fetchMonthlyScheduledDates(
+                calendarMonth.getFullYear(),
+                calendarMonth.getMonth() + 1
+            );
+        }
+    }, [selectedBranch, calendarMonth]);
+
     const currentSchedule = scheduleMap;
     const timeSlots = dynamicTimeSlots;
 
@@ -161,13 +201,24 @@ export default function SchedulePage() {
                     comment: "Updated from grid"
                 });
             } else {
-                await api.post(`/attendance?branchId=${selectedBranch}`, {
+                const res = await api.post(`/attendance?branchId=${selectedBranch}`, {
                     scheduleSlotId: studentData.slotId,
                     studentId: studentData.studentId,
                     date: dateStr,
                     status: uppercaseStatus,
                     comment: "Marked from grid"
                 });
+
+                // Check for last-class flag from backend (Issue #5)
+                const responseData = res.data?.data;
+                if (responseData?.isLastClass && uppercaseStatus === 'ATTENDED') {
+                    setLastClassInfo({
+                        studentName: responseData.studentName || studentData.name || 'Student',
+                        remainingClasses: responseData.remainingClasses || 0,
+                        studentId: studentData.studentId
+                    });
+                    setShowLastClassAlert(true);
+                }
             }
             toast.success(`Marked as ${statusStr}`);
             fetchSchedule(dateStr);
@@ -272,8 +323,24 @@ export default function SchedulePage() {
                                 mode="single"
                                 selected={selectedDate}
                                 onSelect={handleSelectDate}
+                                month={calendarMonth}
+                                onMonthChange={setCalendarMonth}
                                 initialFocus
                                 className="p-3"
+                                modifiers={{ hasSchedule: scheduledDates }}
+                                components={{
+                                    DayButton: (props) => (
+                                        <div className="relative w-full h-full flex items-center justify-center">
+                                            <CalendarDayButton {...props} />
+                                            {props.modifiers.hasSchedule && (
+                                                <span
+                                                    className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-green-500 pointer-events-none z-10"
+                                                    aria-label="has scheduled students"
+                                                />
+                                            )}
+                                        </div>
+                                    )
+                                }}
                             />
                         </PopoverContent>
                     </Popover>
@@ -313,7 +380,7 @@ export default function SchedulePage() {
                 </div>
                 <div className="flex items-center gap-2">
                     {isPast ? (
-                        <span className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">Read Only History</span>
+                        <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">Past Date — Editable</span>
                     ) : isFuture ? (
                         <span className="bg-primary/10 text-primary px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">Future Booking</span>
                     ) : (
@@ -400,7 +467,7 @@ export default function SchedulePage() {
                                                                             status === 'Pending' && studentData.gender === 'FEMALE' && "bg-pink-50 border-pink-200 hover:border-pink-400 text-pink-700 hover:bg-pink-100/50 shadow-[0_2px_10px_-3px_rgba(236,72,153,0.2)]",
                                                                             status === 'Pending' && studentData.gender !== 'FEMALE' && "bg-background border-border hover:border-primary/50 text-foreground hover:bg-muted/30"
                                                                         )}
-                                                                        disabled={isPast && status === 'Pending'}
+                                                                        disabled={false}
                                                                     >
                                                                         <div className="truncate pr-2">{studentData.name || "Student"}</div>
                                                                         <div className="text-[10px] font-black opacity-60 bg-black/5 px-1.5 py-0.5 rounded shrink-0">
@@ -464,7 +531,7 @@ export default function SchedulePage() {
                                                     })}
 
                                                     {/* Empty Slot Adder */}
-                                                    {studentsInSlot.length < 6 && !isPast && (
+                                                    {studentsInSlot.length < 6 && (
                                                         <button
                                                             className="w-full h-9 flex items-center justify-center border border-dashed border-primary/30 rounded-lg text-primary/60 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors mt-1"
                                                             onClick={() => {
@@ -789,6 +856,73 @@ export default function SchedulePage() {
                             }}
                         >
                             {isProcessing ? "Removing..." : "Remove Now"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Last Class Renewal Reminder Dialog (Issue #5) */}
+            <Dialog open={showLastClassAlert} onOpenChange={setShowLastClassAlert}>
+                <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
+                    <div className="p-8 flex flex-col items-center text-center">
+                        <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+                            <AlertTriangle className="w-10 h-10 text-amber-500" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black text-slate-900 mb-2">
+                            {lastClassInfo?.remainingClasses === 0 ? "Package Completed! 🏁" : "Last Class Alert! ⚠️"}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm font-medium text-slate-500 mb-4">
+                            {lastClassInfo?.remainingClasses === 0
+                                ? <><strong className="text-slate-800">{lastClassInfo?.studentName}</strong> has used all their classes in this package. Their membership is now expired.</>
+                                : <><strong className="text-slate-800">{lastClassInfo?.studentName}</strong> has only <strong className="text-amber-600">{lastClassInfo?.remainingClasses} class</strong> remaining in their package.</>
+                            }
+                        </DialogDescription>
+
+                        <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2">
+                            <p className="text-sm font-bold text-amber-700">
+                                Would you like to set a renewal reminder?
+                            </p>
+                            <p className="text-xs font-medium text-amber-600 mt-1">
+                                A reminder will be created for tomorrow to follow up with the student about renewing their package.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="px-8 pb-8 grid grid-cols-2 gap-3">
+                        <Button
+                            variant="outline"
+                            className="h-12 rounded-2xl font-bold"
+                            onClick={() => setShowLastClassAlert(false)}
+                        >
+                            No, Skip
+                        </Button>
+                        <Button
+                            disabled={isCreatingReminder}
+                            className="h-12 rounded-2xl font-black bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
+                            onClick={async () => {
+                                if (!lastClassInfo) return;
+                                setIsCreatingReminder(true);
+                                try {
+                                    const tomorrow = new Date();
+                                    tomorrow.setDate(tomorrow.getDate() + 1);
+                                    await api.post('/reminders', {
+                                        title: `Renewal Reminder: ${lastClassInfo.studentName}`,
+                                        description: `${lastClassInfo.studentName}'s package has ${lastClassInfo.remainingClasses === 0 ? 'expired (all classes used)' : `only ${lastClassInfo.remainingClasses} class remaining`}. Please follow up about package renewal.`,
+                                        targetType: 'self',
+                                        scheduledDate: tomorrow.toISOString(),
+                                        priority: 'HIGH'
+                                    });
+                                    toast.success("Renewal reminder created for tomorrow!");
+                                } catch (err) {
+                                    console.error("Failed to create reminder", err);
+                                    toast.error("Could not create reminder. Please add one manually.");
+                                } finally {
+                                    setIsCreatingReminder(false);
+                                    setShowLastClassAlert(false);
+                                }
+                            }}
+                        >
+                            {isCreatingReminder ? "Creating..." : <><Bell className="w-4 h-4 mr-2" /> Yes, Set Reminder</>}
                         </Button>
                     </div>
                 </DialogContent>

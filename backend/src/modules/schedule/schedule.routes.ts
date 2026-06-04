@@ -4,7 +4,7 @@ import { authenticate } from '../../middleware/auth';
 import { authorize } from '../../middleware/rbac';
 import { branchScope } from '../../middleware/branchScope';
 import { validate } from '../../middleware/validate';
-import { getGridSchema, assignSlotSchema, removeSlotSchema, swapSlotSchema } from './schedule.schema';
+import { getGridSchema, assignSlotSchema, removeSlotSchema, swapSlotSchema, getMonthlySummarySchema } from './schedule.schema';
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.use(authorize(['SUPER_ADMIN', 'STAFF', 'schedules:full']));
 router.use(branchScope);
 
 router.get('/grid', validate(getGridSchema), scheduleController.getScheduleGrid);
+router.get('/monthly-summary', validate(getMonthlySummarySchema), scheduleController.getMonthlyScheduledDates);
 router.post('/assign', validate(assignSlotSchema), scheduleController.assignSlot);
 router.post('/remove', validate(removeSlotSchema), scheduleController.removeSlot);
 router.post('/swap', validate(swapSlotSchema), scheduleController.swapSlot);

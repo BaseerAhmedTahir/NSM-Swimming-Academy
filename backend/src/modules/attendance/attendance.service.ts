@@ -49,6 +49,10 @@ export const markAttendance = async (data: any, branchId: string | undefined, ma
             }
         });
 
+        let isLastClass = false;
+        let remainingClasses = -1;
+        let studentName = '';
+
         if (data.status === 'ATTENDED') {
             const history = await tx.membershipHistory.findFirst({
                 where: { studentId: data.studentId, status: 'ACTIVE' },
@@ -61,8 +65,18 @@ export const markAttendance = async (data: any, branchId: string | undefined, ma
                     data: { classesUsed: { increment: 1 } }
                 });
 
+                const totalAvailable = history.totalClasses + (history.freeClasses || 0) + (history.oldClasses || 0);
+                remainingClasses = Math.max(0, totalAvailable - updatedHistory.classesUsed);
+
+                // Detect if this is the last class (0 remaining) or second-to-last (1 remaining)
+                if (remainingClasses <= 1) {
+                    isLastClass = true;
+                    const studentInfo = await tx.student.findUnique({ where: { id: data.studentId }, select: { name: true } });
+                    studentName = studentInfo?.name || '';
+                }
+
                 // Auto-expire if classes are fully used
-                if (updatedHistory.classesUsed >= history.totalClasses) {
+                if (updatedHistory.classesUsed >= totalAvailable) {
                     await tx.membershipHistory.update({
                         where: { id: history.id },
                         data: { status: 'COMPLETED' }
@@ -96,7 +110,7 @@ export const markAttendance = async (data: any, branchId: string | undefined, ma
              }
         }
 
-        return record;
+        return { ...record, isLastClass, remainingClasses, studentName };
     });
 };
 
@@ -132,8 +146,9 @@ export const updateAttendance = async (id: string, branchId: string | undefined,
                         data: { classesUsed: { decrement: 1 } }
                     });
                     
-                    // Reactivate if they dropped below totalClasses and are currently COMPLETED
-                    if (updatedHistory.classesUsed < history.totalClasses && history.status === 'COMPLETED') {
+                    // Reactivate if they dropped below total available and are currently COMPLETED
+                    const totalAvailable = history.totalClasses + (history.freeClasses || 0) + (history.oldClasses || 0);
+                    if (updatedHistory.classesUsed < totalAvailable && history.status === 'COMPLETED') {
                         // Also check if membershipExpiryDate hasn't passed
                         const student = await tx.student.findUnique({ where: { id: existing.studentId } });
                         if (student && (!student.membershipExpiryDate || student.membershipExpiryDate >= new Date())) {
@@ -154,7 +169,8 @@ export const updateAttendance = async (id: string, branchId: string | undefined,
                         data: { classesUsed: { increment: 1 } }
                     });
 
-                    if (updatedHistory.classesUsed >= history.totalClasses) {
+                    const totalAvailable = history.totalClasses + (history.freeClasses || 0) + (history.oldClasses || 0);
+                    if (updatedHistory.classesUsed >= totalAvailable) {
                         await tx.membershipHistory.update({
                             where: { id: history.id },
                             data: { status: 'COMPLETED' }

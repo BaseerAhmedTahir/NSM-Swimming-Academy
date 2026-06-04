@@ -99,7 +99,7 @@ export function TopBar() {
         };
 
         checkReminders();
-        const reminderInterval = setInterval(checkReminders, 15000); // 15s poll
+        const reminderInterval = setInterval(checkReminders, 60000); // 60s poll (reduced from 15s)
         
         return () => {
             clearInterval(timer);

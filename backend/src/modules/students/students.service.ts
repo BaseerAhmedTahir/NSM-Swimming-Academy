@@ -4,6 +4,41 @@ import { generateStudentId, generateInvoiceNumber } from '../../utils/generateId
 import bcrypt from 'bcryptjs';
 import { sendCredentialsEmail } from '../../utils/email';
 
+// Throttle expensive soft-update queries — run at most once per 60 seconds
+let lastSoftUpdateTime = 0;
+const SOFT_UPDATE_INTERVAL_MS = 60_000;
+
+const runSoftUpdatesIfNeeded = async () => {
+    const now = Date.now();
+    if (now - lastSoftUpdateTime < SOFT_UPDATE_INTERVAL_MS) return;
+    lastSoftUpdateTime = now;
+
+    // Expire students whose membership date has passed
+    await prisma.student.updateMany({
+        where: { status: 'ACTIVE', membershipExpiryDate: { lt: new Date() } },
+        data: { status: 'EXPIRED' }
+    });
+
+    // Expire students who have used all their classes (accounting for freeClasses + oldClasses)
+    const activeMemberships = await prisma.membershipHistory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, studentId: true, classesUsed: true, totalClasses: true, freeClasses: true, oldClasses: true }
+    });
+    const exhaustedIds = activeMemberships
+        .filter(m => m.classesUsed >= (m.totalClasses + (m.freeClasses || 0) + (m.oldClasses || 0)))
+        .map(m => m.studentId);
+    if (exhaustedIds.length > 0) {
+        await prisma.student.updateMany({
+            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'EXPIRED' }
+        });
+        await prisma.membershipHistory.updateMany({
+            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
+            data: { status: 'COMPLETED' }
+        });
+    }
+};
+
 // Helper: Dynamic package pricing lookup from Settings with fallback
 const getPackageDetails = async (type: string, branchId?: string, txClient: any = prisma) => {
     let settingKey = `PACKAGE_${type}`;
@@ -63,31 +98,8 @@ export const searchStudents = async (query: string, branchId?: string) => {
 };
 
 export const getAllStudents = async (queryArgs: any, branchId?: string) => {
-    // Soft update expired students dynamically (Date-based)
-    await prisma.student.updateMany({
-        where: {
-            status: 'ACTIVE',
-            membershipExpiryDate: { lt: new Date() }
-        },
-        data: { status: 'EXPIRED' }
-    });
-
-    // Soft update students who have used all their classes (accounting for freeClasses)
-    const activeMemberships = await prisma.membershipHistory.findMany({
-        where: { status: 'ACTIVE' },
-        select: { id: true, studentId: true, classesUsed: true, totalClasses: true, freeClasses: true }
-    });
-    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= (m.totalClasses + (m.freeClasses || 0))).map(m => m.studentId);
-    if (exhaustedIds.length > 0) {
-        await prisma.student.updateMany({
-            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
-            data: { status: 'EXPIRED' }
-        });
-        await prisma.membershipHistory.updateMany({
-            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
-            data: { status: 'COMPLETED' }
-        });
-    }
+    // Throttled soft-update — runs at most once per 60 seconds instead of every request
+    await runSoftUpdatesIfNeeded();
 
     const { page, limit, skip } = getPaginationOptions(queryArgs?.page, queryArgs?.limit);
     
@@ -121,7 +133,7 @@ export const getAllStudents = async (queryArgs: any, branchId?: string) => {
                 membershipHistory: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    select: { totalClasses: true, classesUsed: true, freeClasses: true, status: true }
+                    select: { totalClasses: true, classesUsed: true, freeClasses: true, oldClasses: true, status: true }
                 },
                 createdAt: true
             }
@@ -248,6 +260,7 @@ export const createStudent = async (data: any, adminBranchId: string) => {
                 studentId: student.id, packageType: data.packageType,
                 startDate, expiryDate, totalClasses: packageInfo.classes,
                 freeClasses: data.freeClasses || 0,
+                oldClasses: data.oldClasses || 0,
                 status: 'ACTIVE'
             }
         });
@@ -387,6 +400,9 @@ export const updateStudent = async (id: string, branchId: string | undefined, da
         if (data.freeClasses !== undefined) {
             membershipUpdateData.freeClasses = data.freeClasses;
         }
+        if (data.oldClasses !== undefined) {
+            membershipUpdateData.oldClasses = data.oldClasses;
+        }
         if (Object.keys(membershipUpdateData).length > 0) {
             const latestMembership = await tx.membershipHistory.findFirst({
                 where: { studentId: id },
@@ -493,6 +509,7 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
                 studentId: student.id, packageType: data.packageType,
                 startDate, expiryDate, totalClasses: packageInfo.classes,
                 freeClasses: data.freeClasses || 0,
+                oldClasses: data.oldClasses || 0,
                 status: 'ACTIVE'
             }
         });
@@ -656,31 +673,8 @@ export const getStudentMembershipHistory = async (id: string, branchId?: string)
 // - COMPLETED/EXPIRED history = students who expired and have since been renewed (permanent history)
 // - ACTIVE history for EXPIRED students = newly expired, not yet renewed (current expired screen)
 export const getExpiredHistory = async (branchId?: string) => {
-    // Soft update expired students dynamically (Date-based)
-    await prisma.student.updateMany({
-        where: {
-            status: 'ACTIVE',
-            membershipExpiryDate: { lt: new Date() }
-        },
-        data: { status: 'EXPIRED' }
-    });
-
-    // Soft update students who have used all their classes
-    const activeMemberships = await prisma.membershipHistory.findMany({
-        where: { status: 'ACTIVE' },
-        select: { id: true, studentId: true, classesUsed: true, totalClasses: true }
-    });
-    const exhaustedIds = activeMemberships.filter(m => m.classesUsed >= m.totalClasses).map(m => m.studentId);
-    if (exhaustedIds.length > 0) {
-        await prisma.student.updateMany({
-            where: { id: { in: exhaustedIds }, status: 'ACTIVE' },
-            data: { status: 'EXPIRED' }
-        });
-        await prisma.membershipHistory.updateMany({
-            where: { studentId: { in: exhaustedIds }, status: 'ACTIVE' },
-            data: { status: 'COMPLETED' }
-        });
-    }
+    // Throttled soft-update — runs at most once per 60 seconds instead of every request
+    await runSoftUpdatesIfNeeded();
 
     const studentWhere = branchId ? { branchId } : {};
     return await prisma.membershipHistory.findMany({

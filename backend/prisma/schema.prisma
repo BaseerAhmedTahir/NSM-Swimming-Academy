@@ -178,6 +178,7 @@ model MembershipHistory {
   totalClasses Int
   classesUsed  Int             @default(0)
   freeClasses  Int             @default(0)
+  oldClasses   Int             @default(0)  // Carryover classes from previous expired package
   status      MembershipStatus
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt

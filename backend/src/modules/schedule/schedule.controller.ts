@@ -16,6 +16,23 @@ export const getScheduleGrid = async (req: Request, res: Response, next: NextFun
     }
 };
 
+export const getMonthlyScheduledDates = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const branchId = req.scopedBranchId || req.query.branchId as string;
+        const year = parseInt(req.query.year as string, 10);
+        const month = parseInt(req.query.month as string, 10);
+
+        if (!branchId) throw new Error('Branch ID is required');
+        if (isNaN(year) || isNaN(month)) throw new Error('Valid year and month are required');
+
+        const dates = await scheduleService.getMonthlyScheduledDates(year, month, branchId);
+        console.log(`[monthly-summary] year=${year} month=${month} branchId=${branchId} → returning dates:`, dates);
+        return successResponse({ res, data: dates });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const assignSlot = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const branchId = req.scopedBranchId || req.query.branchId as string;

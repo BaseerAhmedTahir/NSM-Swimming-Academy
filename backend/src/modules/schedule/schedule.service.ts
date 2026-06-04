@@ -25,6 +25,44 @@ export const getScheduleGrid = async (dateStr: string, branchId: string) => {
     return { coaches, schedules };
 };
 
+export const getMonthlyScheduledDates = async (year: number, month: number, branchId: string): Promise<string[]> => {
+    // Build UTC date range for the entire month
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+    const endDate   = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+    // Fetch all schedules for this branch+month, including each slot's studentId.
+    // We deliberately avoid ORM relation-filter quirks by fetching everything and
+    // doing a plain JS null check — the most reliable approach.
+    const schedules = await prisma.schedule.findMany({
+        where: {
+            branchId,
+            date: { gte: startDate, lte: endDate },
+        },
+        select: {
+            date: true,
+            slots: {
+                select: { studentId: true }
+            }
+        }
+    });
+
+    const dateSet = new Set<string>();
+
+    for (const s of schedules) {
+        // Only mark the date if at least one slot actually has a student assigned
+        const hasStudent = s.slots.some(slot => slot.studentId !== null && slot.studentId !== undefined);
+        if (!hasStudent) continue;
+
+        const d = s.date;
+        const yyyy = d.getUTCFullYear();
+        const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd   = String(d.getUTCDate()).padStart(2, '0');
+        dateSet.add(`${yyyy}-${mm}-${dd}`);
+    }
+
+    return Array.from(dateSet);
+};
+
 export const assignSlot = async (data: any, branchId: string) => {
     const targetDate = new Date(data.date);
     targetDate.setUTCHours(0, 0, 0, 0);
