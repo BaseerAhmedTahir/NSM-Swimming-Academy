@@ -2,7 +2,8 @@
 
 import {
     BarChart3, Download, FileText, TrendingUp,
-    Users, DollarSign, Activity, CalendarDays
+    Users, DollarSign, Activity, CalendarDays,
+    UserPlus, RefreshCw, ArrowRightLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +28,8 @@ export default function ReportsPage() {
         students: { total: 0, breakdown: [] as any[], levels: [] as any[] },
         revenue: { stats: { totalAmount: 0, totalPaid: 0, totalPending: 0, count: 0 }, data: [] as any[] },
         attendance: { summary: [] as any[] },
-        coaches: [] as any[]
+        coaches: [] as any[],
+        registrations: { summary: { newRegistrations: 0, renewals: 0, total: 0, newRevenue: 0, renewRevenue: 0, totalRevenue: 0 }, branchWise: [] as any[] }
     });
 
     const fetchBranches = async () => {
@@ -47,18 +49,20 @@ export default function ReportsPage() {
                 params.endDate = customEnd;
             }
             
-            const [studRes, revRes, attRes, coachRes] = await Promise.all([
+            const [studRes, revRes, attRes, coachRes, regRes] = await Promise.all([
                 api.get('/reports/students', { params }),
                 api.get('/reports/revenue', { params }),
                 api.get('/reports/attendance', { params }),
-                api.get('/coaches', { params: { limit: 100 } })
+                api.get('/coaches', { params: { limit: 100 } }),
+                api.get('/reports/registrations', { params }).catch(() => ({ data: { data: { summary: { newRegistrations: 0, renewals: 0, total: 0, newRevenue: 0, renewRevenue: 0, totalRevenue: 0 }, branchWise: [] } } }))
             ]);
 
             setReportData({
                 students: studRes.data.data,
                 revenue: revRes.data.data,
                 attendance: attRes.data.data,
-                coaches: coachRes.data.data.results || coachRes.data.data
+                coaches: coachRes.data.data.results || coachRes.data.data,
+                registrations: regRes.data.data
             });
         } catch (err) {
             console.error("Failed to load reports", err);
@@ -262,7 +266,110 @@ export default function ReportsPage() {
                 </Card>
             </div>
 
+            {/* Registration Metrics — New vs Renewals */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="border-border/50 shadow-sm relative overflow-hidden group bg-emerald-500/5 border-emerald-500/20">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+                        <UserPlus className="w-24 h-24 text-emerald-500" />
+                    </div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold text-emerald-600 uppercase tracking-widest">New Registrations</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-end gap-3">
+                            <span className="text-4xl font-black text-foreground">{isLoading ? "..." : reportData.registrations?.summary?.newRegistrations || 0}</span>
+                            <span className="text-sm font-bold text-muted-foreground mb-1">students</span>
+                        </div>
+                        <p className="text-xs font-bold text-emerald-600 mt-2">AED {(reportData.registrations?.summary?.newRevenue || 0).toLocaleString()}</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/50 shadow-sm relative overflow-hidden group bg-violet-500/5 border-violet-500/20">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+                        <RefreshCw className="w-24 h-24 text-violet-500" />
+                    </div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold text-violet-600 uppercase tracking-widest">Renewals</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-end gap-3">
+                            <span className="text-4xl font-black text-foreground">{isLoading ? "..." : reportData.registrations?.summary?.renewals || 0}</span>
+                            <span className="text-sm font-bold text-muted-foreground mb-1">students</span>
+                        </div>
+                        <p className="text-xs font-bold text-violet-600 mt-2">AED {(reportData.registrations?.summary?.renewRevenue || 0).toLocaleString()}</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+                        <ArrowRightLeft className="w-24 h-24 text-primary" />
+                    </div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">New : Renewal Ratio</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-end gap-3">
+                            <span className="text-4xl font-black text-foreground">
+                                {isLoading ? "..." : (() => {
+                                    const n = reportData.registrations?.summary?.newRegistrations || 0;
+                                    const r = reportData.registrations?.summary?.renewals || 0;
+                                    if (n === 0 && r === 0) return "0:0";
+                                    if (r === 0) return `${n}:0`;
+                                    return `${n}:${r}`;
+                                })()}
+                            </span>
+                        </div>
+                        <p className="text-xs font-bold text-muted-foreground mt-2">Total: {reportData.registrations?.summary?.total || 0} transactions</p>
+                    </CardContent>
+                </Card>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* New vs Renewals by Branch */}
+                <Card className="border-border/50 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="font-bold flex items-center gap-2">
+                            <ArrowRightLeft className="w-5 h-5 text-primary" />
+                            New vs Renewals by Branch
+                        </CardTitle>
+                        <CardDescription>Registration type breakdown across all active branches.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-4">
+                        {(() => {
+                            const branchWise = reportData.registrations?.branchWise || [];
+                            // Group by branch
+                            const grouped: Record<string, { newCount: number; renewCount: number; prefix: string }> = {};
+                            branchWise.forEach((b: any) => {
+                                if (!grouped[b.branchName]) grouped[b.branchName] = { newCount: 0, renewCount: 0, prefix: b.branchPrefix };
+                                if (b.registrationType === 'NEW') grouped[b.branchName].newCount = b.count;
+                                if (b.registrationType === 'RENEW') grouped[b.branchName].renewCount = b.count;
+                            });
+                            const entries = Object.entries(grouped);
+                            if (entries.length === 0) return <p className="text-center text-muted-foreground py-6">No registration data available</p>;
+                            const maxVal = Math.max(...entries.map(([, v]) => v.newCount + v.renewCount), 1);
+                            return entries.map(([name, data], idx) => (
+                                <div key={idx} className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-bold text-foreground">{name} <span className="text-muted-foreground">({data.prefix})</span></span>
+                                        <div className="flex gap-3 text-xs font-bold">
+                                            <span className="text-emerald-600">{data.newCount} New</span>
+                                            <span className="text-violet-600">{data.renewCount} Renew</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full h-4 bg-muted rounded-full overflow-hidden flex">
+                                        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(data.newCount / maxVal) * 100}%` }} />
+                                        <div className="h-full bg-violet-500 transition-all duration-500" style={{ width: `${(data.renewCount / maxVal) * 100}%` }} />
+                                    </div>
+                                </div>
+                            ));
+                        })()}
+                        <div className="flex items-center gap-4 pt-2 text-xs font-bold text-muted-foreground">
+                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500" /> New</div>
+                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-violet-500" /> Renewal</div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Revenue by Branch Chart */}
                 <Card className="border-border/50 shadow-sm">

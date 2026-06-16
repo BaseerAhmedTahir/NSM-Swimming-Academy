@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database';
 import { getPaginationOptions, formatPaginatedResponse } from '../../utils/pagination';
-import { generateInvoiceNumber } from '../../utils/generateId';
+import { generateInvoiceNumber, generateSerialNumber } from '../../utils/generateId';
 
 export const getAllPayments = async (queryArgs: any, branchId?: string) => {
     const { page, limit, skip } = getPaginationOptions(queryArgs?.page, queryArgs?.limit);
@@ -86,12 +86,22 @@ export const createPayment = async (data: any, adminBranchId: string) => {
 
         const invoiceNumber = generateInvoiceNumber(branch.code, nextSequence);
 
+        // Generate transactional serial number
+        const serialPrefix = branch.serialPrefix || branch.code;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const serialCount = await tx.payment.count({
+            where: { branchId, createdAt: { gte: monthStart } }
+        });
+        const serialNumber = generateSerialNumber(serialPrefix, serialCount + 1);
+
         const totalAmount = data.amount - (data.discount || 0);
         const pendingAmount = totalAmount - data.paidAmount;
 
         return await tx.payment.create({
             data: {
                 invoiceNumber,
+                serialNumber,
                 studentId: data.studentId,
                 branchId,
                 amount: data.amount,

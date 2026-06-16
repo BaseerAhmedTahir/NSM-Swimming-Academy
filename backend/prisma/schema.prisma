@@ -17,6 +17,7 @@ model Branch {
   name           String   @unique
   code           String   @unique
                  // "DXB", "SHJ", "AUH"
+  serialPrefix   String?  // Branch-specific serial prefix for receipts, e.g. "S01", "D01", "AB01"
   address        String
   phone          String
   email          String
@@ -293,6 +294,7 @@ enum AttendanceStatus {
 model Payment {
   id               String           @id @default(uuid())
   invoiceNumber    String           @unique
+  serialNumber     String?          @unique  // Transactional serial number, e.g. "S01-2606-0001"
   studentId        String
   branchId         String
   amount           Float

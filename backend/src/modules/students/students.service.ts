@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database';
 import { getPaginationOptions, formatPaginatedResponse } from '../../utils/pagination';
-import { generateStudentId, generateInvoiceNumber } from '../../utils/generateId';
+import { generateStudentId, generateInvoiceNumber, generateSerialNumber } from '../../utils/generateId';
 import bcrypt from 'bcryptjs';
 import { sendCredentialsEmail } from '../../utils/email';
 
@@ -234,6 +234,15 @@ export const createStudent = async (data: any, adminBranchId: string) => {
         }
 
         const invoiceNumber = generateInvoiceNumber(branch.code, nextPaySequence);
+
+        // Generate transactional serial number using branch prefix
+        const serialPrefix = branch.serialPrefix || branch.code;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const serialCount = await tx.payment.count({
+            where: { branchId, createdAt: { gte: monthStart } }
+        });
+        const serialNumber = generateSerialNumber(serialPrefix, serialCount + 1);
         
         let paidAmount = 0;
         if (data.paymentStatus === 'PAID') {
@@ -245,7 +254,7 @@ export const createStudent = async (data: any, adminBranchId: string) => {
 
         const payment = await tx.payment.create({
             data: {
-                invoiceNumber, studentId: student.id, branchId,
+                invoiceNumber, serialNumber, studentId: student.id, branchId,
                 amount, discount: data.discount || 0,
                 totalAmount, paidAmount, 
                 pendingAmount,
@@ -475,9 +484,18 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
             }
         });
 
-        // Generate Payment
+        // Generate Payment with new serial number
         const paymentCount = await tx.payment.count({ where: { branchId: student.branchId, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } } });
         const invoiceNumber = generateInvoiceNumber(branch.code, paymentCount + 1);
+
+        // Generate new transactional serial number for this renewal
+        const serialPrefix = branch.serialPrefix || branch.code;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const serialCount = await tx.payment.count({
+            where: { branchId: student.branchId, createdAt: { gte: monthStart } }
+        });
+        const serialNumber = generateSerialNumber(serialPrefix, serialCount + 1);
         
         let paidAmount = 0;
         if (data.paymentStatus === 'PAID') {
@@ -489,7 +507,7 @@ export const renewStudent = async (id: string, branchId: string | undefined, dat
 
         await tx.payment.create({
             data: {
-                invoiceNumber, studentId: student.id, branchId: student.branchId,
+                invoiceNumber, serialNumber, studentId: student.id, branchId: student.branchId,
                 amount, discount: data.discount || 0,
                 totalAmount, paidAmount, 
                 pendingAmount,

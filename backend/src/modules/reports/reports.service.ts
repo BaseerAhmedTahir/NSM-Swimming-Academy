@@ -77,6 +77,75 @@ export const generateReportData = async (type: string, queryArgs: any) => {
         return { type: 'students', startDate, endDate, total, breakdown: statusBreakdown, levels: levelBreakdown };
     }
 
+    if (type === 'registrations') {
+        // New vs Renewal breakdown from payments
+        const [regTypeBreakdown, branchBreakdown, totalTransactions] = await Promise.all([
+            prisma.payment.groupBy({
+                by: ['registrationType'],
+                where: { ...whereBranch, paymentDate: { gte: startDate, lte: endDate } },
+                _count: true,
+                _sum: { paidAmount: true }
+            }),
+            prisma.payment.groupBy({
+                by: ['registrationType', 'branchId'],
+                where: { paymentDate: { gte: startDate, lte: endDate } },
+                _count: true,
+                _sum: { paidAmount: true }
+            }),
+            prisma.payment.count({
+                where: { ...whereBranch, paymentDate: { gte: startDate, lte: endDate } }
+            })
+        ]);
+
+        // Resolve branch names for the breakdown
+        const branchIds = [...new Set(branchBreakdown.map((b: any) => b.branchId))];
+        const branches = branchIds.length > 0
+            ? await prisma.branch.findMany({
+                where: { id: { in: branchIds as string[] } },
+                select: { id: true, name: true, serialPrefix: true, code: true }
+            })
+            : [];
+        const branchMap = Object.fromEntries(branches.map((b: any) => [b.id, b]));
+
+        const newCount = regTypeBreakdown.find((r: any) => r.registrationType === 'NEW')?._count || 0;
+        const renewCount = regTypeBreakdown.find((r: any) => r.registrationType === 'RENEW')?._count || 0;
+        const newRevenue = regTypeBreakdown.find((r: any) => r.registrationType === 'NEW')?._sum?.paidAmount || 0;
+        const renewRevenue = regTypeBreakdown.find((r: any) => r.registrationType === 'RENEW')?._sum?.paidAmount || 0;
+
+        // Format branch-wise breakdown
+        const branchWise = branchBreakdown.map((b: any) => ({
+            branchId: b.branchId,
+            branchName: branchMap[b.branchId]?.name || 'Unknown',
+            branchPrefix: branchMap[b.branchId]?.serialPrefix || branchMap[b.branchId]?.code || 'N/A',
+            registrationType: b.registrationType,
+            count: b._count,
+            revenue: b._sum?.paidAmount || 0
+        }));
+
+        // Get serial number ranges per branch for the period
+        const serialRanges = await prisma.payment.findMany({
+            where: { ...whereBranch, paymentDate: { gte: startDate, lte: endDate }, serialNumber: { not: null } },
+            select: { serialNumber: true, branchId: true, registrationType: true },
+            orderBy: { serialNumber: 'asc' }
+        });
+
+        return {
+            type: 'registrations',
+            startDate,
+            endDate,
+            summary: {
+                newRegistrations: newCount,
+                renewals: renewCount,
+                total: totalTransactions,
+                newRevenue,
+                renewRevenue,
+                totalRevenue: newRevenue + renewRevenue,
+            },
+            branchWise,
+            serialRanges
+        };
+    }
+
     throw new Error('Invalid report type or not implemented');
 };
 
@@ -102,6 +171,31 @@ export const createPdfReportStream = async (type: string, data: any) => {
         data.breakdown.forEach((stat: any) => {
             doc.text(`- ${stat.status}: ${stat._count}`);
         });
+    } else if (type === 'registrations') {
+        doc.font('Helvetica-Bold').text('Registration Summary').font('Helvetica').moveDown(0.5);
+        doc.text(`New Registrations: ${data.summary.newRegistrations}`);
+        doc.text(`Renewals: ${data.summary.renewals}`);
+        doc.text(`Total Transactions: ${data.summary.total}`);
+        doc.moveDown(0.5);
+        doc.text(`New Revenue: AED ${data.summary.newRevenue.toFixed(2)}`);
+        doc.text(`Renewal Revenue: AED ${data.summary.renewRevenue.toFixed(2)}`);
+        doc.text(`Total Revenue: AED ${data.summary.totalRevenue.toFixed(2)}`);
+        
+        if (data.branchWise && data.branchWise.length > 0) {
+            doc.moveDown().font('Helvetica-Bold').text('Branch-wise Breakdown:').font('Helvetica').moveDown(0.5);
+            // Group by branch
+            const grouped: Record<string, any[]> = {};
+            data.branchWise.forEach((b: any) => {
+                if (!grouped[b.branchName]) grouped[b.branchName] = [];
+                grouped[b.branchName].push(b);
+            });
+            Object.entries(grouped).forEach(([name, items]: [string, any[]]) => {
+                doc.text(`${name} (${items[0]?.branchPrefix || 'N/A'}):`);
+                items.forEach((item: any) => {
+                    doc.text(`  ${item.registrationType}: ${item.count} transactions — AED ${item.revenue.toFixed(2)}`);
+                });
+            });
+        }
     }
 
     doc.moveDown(2).font('Helvetica-Oblique').text('End of Report', { align: 'center' });
@@ -138,6 +232,24 @@ export const createExcelReport = async (type: string, data: any) => {
         data.breakdown.forEach((stat: any) => {
             sheet.addRow([stat.status, stat._count]);
         });
+    } else if (type === 'registrations') {
+        sheet.addRow(['REGISTRATION METRICS']);
+        sheet.addRow([]);
+        sheet.addRow(['New Registrations', data.summary.newRegistrations]);
+        sheet.addRow(['Renewals', data.summary.renewals]);
+        sheet.addRow(['Total Transactions', data.summary.total]);
+        sheet.addRow([]);
+        sheet.addRow(['New Revenue (AED)', data.summary.newRevenue]);
+        sheet.addRow(['Renewal Revenue (AED)', data.summary.renewRevenue]);
+        sheet.addRow(['Total Revenue (AED)', data.summary.totalRevenue]);
+        sheet.addRow([]);
+        sheet.addRow(['BRANCH-WISE BREAKDOWN']);
+        sheet.addRow(['Branch', 'Prefix', 'Type', 'Count', 'Revenue (AED)']);
+        if (data.branchWise) {
+            data.branchWise.forEach((b: any) => {
+                sheet.addRow([b.branchName, b.branchPrefix, b.registrationType, b.count, b.revenue]);
+            });
+        }
     }
 
     // Auto-fit columns

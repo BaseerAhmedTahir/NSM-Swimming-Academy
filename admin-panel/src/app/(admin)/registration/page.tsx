@@ -724,9 +724,24 @@ export default function RegistrationPage() {
                                 <p className="font-bold text-slate-800 mt-2 hover:text-blue-500 cursor-pointer">
                                     {selectedInvoice?.invoiceNumber || selectedStudent?.fee?.invoiceNumber || "N/A"}
                                 </p>
-                                <p className="text-sm font-medium text-slate-500">
+                                {(selectedInvoice?.serialNumber) && (
+                                    <p className="text-sm font-black text-blue-600 mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded">
+                                        Serial: {selectedInvoice.serialNumber}
+                                    </p>
+                                )}
+                                <p className="text-sm font-medium text-slate-500 mt-1">
                                     {selectedInvoice?.paymentDate ? new Date(selectedInvoice.paymentDate).toLocaleDateString() : selectedStudent?.fee?.date}
                                 </p>
+                                {selectedInvoice?.registrationType && (
+                                    <span className={cn(
+                                        "inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
+                                        selectedInvoice.registrationType === 'RENEW'
+                                            ? "bg-violet-100 text-violet-700"
+                                            : "bg-emerald-100 text-emerald-700"
+                                    )}>
+                                        {selectedInvoice.registrationType === 'RENEW' ? 'RENEWAL' : 'NEW REGISTRATION'}
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -779,6 +794,40 @@ export default function RegistrationPage() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Class Breakdown */}
+                        {selectedInvoice?.classBreakdown && (
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Class Breakdown</h4>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm font-bold text-slate-700">
+                                        <span>New Package Classes</span>
+                                        <span>{selectedInvoice.classBreakdown.newClasses}</span>
+                                    </div>
+                                    {selectedInvoice.classBreakdown.oldClasses > 0 && (
+                                        <div className="flex justify-between text-sm font-bold text-orange-600">
+                                            <span>Old Rollover Classes</span>
+                                            <span>+ {selectedInvoice.classBreakdown.oldClasses}</span>
+                                        </div>
+                                    )}
+                                    {selectedInvoice.classBreakdown.freeClasses > 0 && (
+                                        <div className="flex justify-between text-sm font-bold text-emerald-600">
+                                            <span>Free / Promotional Classes</span>
+                                            <span>+ {selectedInvoice.classBreakdown.freeClasses}</span>
+                                        </div>
+                                    )}
+                                    <div className="border-t border-slate-300 pt-2 mt-2 flex justify-between text-sm font-black text-slate-800">
+                                        <span>Total Classes</span>
+                                        <span>{selectedInvoice.classBreakdown.totalClasses}</span>
+                                    </div>
+                                    {selectedInvoice.classBreakdown.startDate && selectedInvoice.classBreakdown.expiryDate && (
+                                        <p className="text-xs font-medium text-slate-500 mt-1">
+                                            Valid: {new Date(selectedInvoice.classBreakdown.startDate).toLocaleDateString()} — {new Date(selectedInvoice.classBreakdown.expiryDate).toLocaleDateString()}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Totals */}
                         <div className="flex justify-end pt-4">
