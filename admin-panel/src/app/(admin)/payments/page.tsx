@@ -179,6 +179,8 @@ export default function PaymentsPage() {
                 const results = res.data.data.results || res.data.data;
                 const mapped = results.map((pay: any) => ({
                     id: pay.invoiceNumber || pay.id,
+                    serialNumber: pay.serialNumber || null,
+                    registrationType: pay.registrationType || 'NEW',
                     studentName: pay.student?.name || "Unknown",
                     studentId: pay.student?.studentId || "N/A",
                     phone: pay.student?.phone || "N/A",
@@ -674,7 +676,22 @@ export default function PaymentsPage() {
                             <div className="text-right">
                                 <h2 className="text-4xl font-black text-slate-200 tracking-tighter uppercase">Receipt</h2>
                                 <p className="font-bold text-slate-800 mt-2 hover:text-blue-500 cursor-pointer">{selectedPayment?.id || "INV-2026-0892"}</p>
-                                <p className="text-sm font-medium text-slate-500">{selectedPayment?.date || new Date().toLocaleDateString()}</p>
+                                {selectedPayment?.serialNumber && (
+                                    <p className="text-sm font-black text-blue-600 mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded">
+                                        Serial: {selectedPayment.serialNumber}
+                                    </p>
+                                )}
+                                <p className="text-sm font-medium text-slate-500 mt-1">{selectedPayment?.date || new Date().toLocaleDateString()}</p>
+                                {selectedPayment?.registrationType && (
+                                    <span className={cn(
+                                        "inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
+                                        selectedPayment.registrationType === 'RENEW'
+                                            ? "bg-violet-100 text-violet-700"
+                                            : "bg-emerald-100 text-emerald-700"
+                                    )}>
+                                        {selectedPayment.registrationType === 'RENEW' ? 'RENEWAL' : 'NEW REGISTRATION'}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

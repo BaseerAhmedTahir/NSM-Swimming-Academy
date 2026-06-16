@@ -558,7 +558,7 @@ export default function RegistrationPage() {
                         ) : filteredStudents.length > 0 ? (
                             filteredStudents.map((student) => (
                                 <TableRow key={student.id} className="hover:bg-muted/30 border-border/50 cursor-pointer transition-colors">
-                                    <TableCell className="font-medium text-muted-foreground">{student.id}</TableCell>
+                                    <TableCell className="font-medium text-muted-foreground">{student.studentId || student.id}</TableCell>
                                     <TableCell>
                                         <div>
                                             <p className="font-bold text-foreground">{student.name}</p>
