@@ -2,7 +2,7 @@
 
 A full-stack management platform for a multi-branch swimming academy — covering student registration, scheduling, attendance, payments, and reporting in one system, with a web admin panel for staff and a mobile app for students.
 
-<!-- Live demo: add your deployed URL here, e.g. [Live Admin Panel](https://...) -->
+**[Live admin panel →](https://nsm-swimming-academy.vercel.app)**
 
 ![Dashboard overview](docs/screenshots/dashboard.png)
 
