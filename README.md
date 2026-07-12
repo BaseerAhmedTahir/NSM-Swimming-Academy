@@ -4,10 +4,12 @@ A full-stack management platform for a multi-branch swimming academy — coverin
 
 <!-- Live demo: add your deployed URL here, e.g. [Live Admin Panel](https://...) -->
 
-![Schedule — live attendance editing](docs/screenshots/schedule.png)
+![Dashboard overview](docs/screenshots/dashboard.png)
 
 <details>
 <summary>More screenshots</summary>
+
+![Schedule — live attendance editing](docs/screenshots/schedule.png)
 
 ![Admin panel login](docs/screenshots/admin-panel.png)
 
