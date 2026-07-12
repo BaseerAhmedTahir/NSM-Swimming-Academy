@@ -124,6 +124,19 @@ dist
 # Mac OS X
 .DS_Store
 
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Debug dumps / scratch output
+err*.json
+*_debug.txt
+*_output.txt
+admin_check.json
+fetch_output.json
+
 # debug
 npm-debug.*
 yarn-debug.*
